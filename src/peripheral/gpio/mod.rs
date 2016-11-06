@@ -1,4 +1,6 @@
 
+use super::Peripheral;
+
 /// An IO group containing up to 16 pins. For
 /// some reason the datasheet shows the memory
 /// for groups D and E as reserved, so for now
@@ -35,8 +37,14 @@ pub struct GPIO {
   mem_addr: u32,
 }
 
+impl Peripheral for GPIO {
+  fn mem_addr(&self) -> u32 {
+    self.mem_addr
+  }
+}
+
 impl GPIO {
-  fn Group(group: GPIOGroup) -> GPIO {
+  fn group(group: GPIOGroup) -> GPIO {
     match group {
       GPIOGroup::A => GPIO::new(0x4800_0000),
       GPIOGroup::B => GPIO::new(0x4800_0400),
@@ -110,7 +118,7 @@ impl GPIOPort {
   }
 
   pub fn get_mode(&self) -> GPIOMode {
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     let set_bits = unsafe {
       // The mode register is at offset 0x0, so no need to add anything
       let moder = gpio.mem_addr as *mut u32;
@@ -128,7 +136,7 @@ impl GPIOPort {
   }
 
   pub fn set_mode(&mut self, mode: GPIOMode) {
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     let mask = match mode {
       GPIOMode::Input     => 0b00,
       GPIOMode::Output    => 0b01,
@@ -145,7 +153,7 @@ impl GPIOPort {
 
   pub fn get_type(&self) -> GPIOType {
     const OTYPER: u32 = 0x4;
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     let set_bits = unsafe {
       let otyper = (gpio.mem_addr + OTYPER) as *mut u32;
       (*otyper & (0b1 << self.port)) >> self.port
@@ -160,7 +168,7 @@ impl GPIOPort {
 
   pub fn set_type(&mut self, p_type: GPIOType) {
     const OTYPER: u32 = 0x4;
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     let mask = match p_type {
       GPIOType::PushPull  => 0b0,
       GPIOType::OpenDrain => 0b1,
@@ -175,7 +183,7 @@ impl GPIOPort {
   /// Sets the pin high.
   pub fn set(&self) {
     const BSRR: u32 = 0x18;
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     unsafe {
       let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
       // The low half of the register asserts the pin
@@ -186,7 +194,7 @@ impl GPIOPort {
   /// Sets the pin low.
   pub fn reset(&self) {
     const BSRR: u32 = 0x18;
-    let gpio = GPIO::Group(self.group);
+    let gpio = GPIO::group(self.group);
     unsafe {
       let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
       // The high half deasserts the pin, so add 16 to the port_num
