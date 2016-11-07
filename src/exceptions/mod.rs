@@ -1,4 +1,5 @@
 
+#[cfg(not(test))]
 #[link_section = ".exceptions"]
 static EXCEPTIONS: [Option<fn() -> !>; 14] = [Some(default_handler),  // NMI
                                               Some(default_handler),  // Hard Fault
@@ -18,7 +19,9 @@ static EXCEPTIONS: [Option<fn() -> !>; 14] = [Some(default_handler),  // NMI
 
 
 pub fn default_handler() -> ! {
-  unsafe { asm!("bkpt"); }
+  if cfg!(not(test)) {
+    unsafe { asm!("bkpt"); }
+  }
 
   loop {}
 }

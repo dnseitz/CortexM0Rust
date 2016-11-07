@@ -1,3 +1,11 @@
+/*
+GROUP(
+  libc.a
+  libnosys.a
+  libgcc.a
+)
+*/
+
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 6K
@@ -23,9 +31,19 @@ SECTIONS
     *(.rodata*)
   } > FLASH
 
+  /*
+  .ARM.exidx : {
+    __exidx_start = .;
+    *(.ARM.exidx* .gnu.linkonce.armexidx.*)
+    __exidx_end = .;
+  } > FLASH
+  _etext = .;
+  */
+
   /DISCARD/ :
   {
     *(.ARM.exidx*)
     *(.note.gnu.build-id*)
   }
 }
+

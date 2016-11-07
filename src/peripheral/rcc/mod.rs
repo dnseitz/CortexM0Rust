@@ -23,7 +23,7 @@ pub enum Clock {
 pub struct RCC {
   mem_addr: u32,
   cr: clock_control::ClockControl,
-  cfgr: config::CFGR,
+  cfgr: config::ConfigControl,
 }
 
 impl Peripheral for RCC {
@@ -38,7 +38,7 @@ impl RCC {
     RCC {
       mem_addr: RCC_ADDR,
       cr: clock_control::ClockControl::new(RCC_ADDR),
-      cfgr: config::CFGR::new(RCC_ADDR),
+      cfgr: config::ConfigControl::new(RCC_ADDR),
     }
   }
 
@@ -95,6 +95,42 @@ impl RCC {
   /// is outside of that range the kernel will panic.
   pub fn set_pll_multiplier(&self, mul: u8) {
     self.cfgr.set_pll_multiplier(mul);
+  }
+
+  /// Get the current prediv factor for the PLL, the factor is in a range of [1..16].
+  pub fn get_pll_prediv_factor(&self) -> u8 {
+    self.cfgr.get_pll_prediv_factor()
+  }
+
+  /// Set the PLL prediv factor, the factor specified MUST be within the range of [1..16], if it is
+  /// outside that range the kernel will panic.
+  pub fn set_pll_prediv_factor(&self, factor: u8) {
+    self.cfgr.set_pll_prediv_factor(factor);
+  }
+
+  pub fn get_system_clock_rate(&self) -> u32 {
+    // TODO: Come back and derive these from cr
+    const HSI_VALUE: u32 = 8_000_000;
+    const HSE_VALUE: u32 = 8_000_000;
+    const HSI48_VALUE: u32 = 48_000_000;
+    match self.get_system_clock_source() {
+      Clock::HSI => HSI_VALUE,
+      Clock::HSE => HSE_VALUE,
+      Clock::HSI48 => HSI48_VALUE,
+      Clock::PLL => {
+        let multiplier = self.get_pll_multiplier() as u32;
+        let source = self.get_pll_source();
+        let prediv_factor = self.get_pll_prediv_factor() as u32;
+
+        match source {
+          Clock::HSE => (HSE_VALUE/prediv_factor) * multiplier,
+          Clock::HSI48 => (HSI48_VALUE/prediv_factor) * multiplier,
+          Clock::HSI => (HSI_VALUE/2) * multiplier,
+          _ => panic!("CRR::update_system_core_clock - invalid clock driving the PLL!"),
+        }
+      },
+      _ => panic!("CRR::update_system_core_clock - invalid clock for the system clock!"),
+    }
   }
 }
 

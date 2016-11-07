@@ -63,6 +63,10 @@ impl Register for CR {
     CR { base_addr: base_addr }
   }
 
+  fn base_addr(&self) -> u32 {
+    self.base_addr
+  }
+
   fn mem_offset(&self) -> u32 {
     0x0
   }
@@ -134,6 +138,10 @@ pub struct CR2 {
 impl Register for CR2 {
   fn new(base_addr: u32) -> Self {
     CR2 { base_addr: base_addr }
+  }
+
+  fn base_addr(&self) -> u32 {
+    self.base_addr
   }
 
   fn mem_offset(&self) -> u32 {

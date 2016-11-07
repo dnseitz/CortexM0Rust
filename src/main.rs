@@ -5,6 +5,7 @@
 
 mod exceptions;
 mod peripheral;
+mod math;
 
 use peripheral::gpio;
 use peripheral::rcc;
@@ -27,7 +28,7 @@ pub fn start() -> ! {
   let clock_source: rcc::Clock = rcc.get_system_clock_source();
   
   // 12 is the max we can go since our input clock is (8MHz / 2)
-  let mut clock_multiplier: u8 = 4;
+  let mut clock_multiplier: u8 = 12;
 
   // PLL must be off in order to configure
   rcc.disable_clock(rcc::Clock::PLL);
@@ -54,6 +55,8 @@ pub fn start() -> ! {
 
   // This should be false since the PLL is running off of it...
   let did_disable_hsi = rcc.disable_clock(rcc::Clock::HSI);
+
+  let clock_rate = rcc.get_system_clock_rate();
   
   let mut ticks: u32 = 5_000;
   loop {
@@ -70,9 +73,17 @@ fn delay(n: u32) {
 }
 
 mod vector_table {
+  #[cfg(not(test))]
   #[link_section = ".reset"]
   static RESET: fn() -> ! = ::start;
 }
 
+#[cfg(not(test))]
 #[lang = "eh_personality"] extern fn eh_personality() {}
+#[cfg(not(test))]
 #[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{}}
+
+
+#[cfg(test)]
+#[no_mangle]
+pub fn _main() {}
