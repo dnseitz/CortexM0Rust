@@ -25,21 +25,34 @@ pub fn start() -> ! {
 
   // Check system clock source...
   let clock_source: rcc::Clock = rcc.get_system_clock_source();
+  
+  // 12 is the max we can go since our input clock is (8MHz / 2)
+  let mut clock_multiplier: u8 = 4;
 
-  let mut clock_multiplier: u8 = 12;
-
+  // PLL must be off in order to configure
   rcc.disable_clock(rcc::Clock::PLL);
+
+  // Make sure HSI is the PLL source clock
   rcc.set_pll_source(rcc::Clock::HSI);
+
+  // Set the multiplier... DO NOT EXCEED 48 MHz
   rcc.set_pll_multiplier(clock_multiplier);
+
+  // Enable the PLL clock
   rcc.enable_clock(rcc::Clock::PLL);
 
+  // Just checking that it's on...
   let pll_enabled = rcc.clock_is_on(rcc::Clock::PLL);
 
+  // Wait for it to be ready
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
+  // Switch over to the PLL for running the system
   rcc.set_system_clock_source(rcc::Clock::PLL);
 
+  // Make sure the PLL is the new system source
   let new_clock_source: rcc::Clock = rcc.get_system_clock_source();
 
+  // This should be false since the PLL is running off of it...
   let did_disable_hsi = rcc.disable_clock(rcc::Clock::HSI);
   
   let mut ticks: u32 = 5_000;

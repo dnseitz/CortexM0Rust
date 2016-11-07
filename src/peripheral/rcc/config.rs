@@ -36,6 +36,8 @@ impl CFGR {
     }
   }
 
+  /// Set the system clock source. The system clock can only be run off of the HSI, HSE, PLL or
+  /// HSI48 clocks, if another clock is specified the kernel will panic
   pub fn set_system_clock_source(&self, clock: Clock) {
     let mask = match clock {
       Clock::HSI => 0b00,
@@ -49,13 +51,13 @@ impl CFGR {
     unsafe {
       let reg = (self.base_addr + self.mem_offset()) as *mut u32;
 
-      // Zero the selection first (does this have any side effects? 
+      // Zero the selection first (does this have any side effects)?
       *reg &= !0b11;
-      // Set the register
       *reg |= mask;
     }
   }
 
+  /// Return the clock that is driving the PLL.
   pub fn get_pll_source(&self) -> Clock {
     let set_bits = unsafe {
       let reg = (self.base_addr + self.mem_offset()) as *mut u32;
@@ -70,6 +72,8 @@ impl CFGR {
     }
   }
 
+  /// Set the specified clock to drive the PLL, only the HSI, HSE or HSI48 can drive the PLL, if
+  /// another clock is specified the kernel will panic.
   pub fn set_pll_source(&self, clock: Clock) {
     let mask = match clock {
       Clock::HSI   => 0b00 << 15,
@@ -81,10 +85,13 @@ impl CFGR {
     unsafe {
       let reg = (self.base_addr + self.mem_offset()) as *mut u32;
 
+      // Zero the register first
+      *reg &= !0b11 << 18;
       *reg |= mask;
     }
   }
 
+  /// Get the current multiplier for the PLL, the multiplier is in a range of [2..16]. 
   pub fn get_pll_multiplier(&self) -> u8 {
     let set_bits = unsafe {
       let reg = (self.base_addr + self.mem_offset()) as *mut u32;
@@ -99,6 +106,8 @@ impl CFGR {
     mul as u8
   }
 
+  /// Set the PLL multiplier, the multiplier specified MUST be within the range of [2..16], if it
+  /// is outside of that range the kernel will panic.
   pub fn set_pll_multiplier(&self, mul: u8) {
     if mul < 2 || mul > 16 {
       panic!("CFGR::set_pll_multiplier - the multiplier must be between 2..16!");
@@ -110,7 +119,6 @@ impl CFGR {
 
       // Zero the register field
       *reg &= !0b1111 << 18;
-      
       *reg |= mask;
     }
   }

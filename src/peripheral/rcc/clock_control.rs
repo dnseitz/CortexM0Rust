@@ -17,7 +17,8 @@ impl ClockControl {
       cr2: CR2::new(base_addr),
     }
   }
-
+  
+  /// Enable a clock
   pub fn enable_clock(&self, clock: Clock) {
     match clock {
       Clock::HSI | Clock::HSE | Clock::PLL => self.cr.set_clock(true, clock),
@@ -25,6 +26,7 @@ impl ClockControl {
     };
   }
 
+  /// Disable a clock, if a clock is unable to be disabled the return value will be false.
   pub fn disable_clock(&self, clock: Clock) -> bool {
     match clock {
       Clock::HSI | Clock::HSE | Clock::PLL => self.cr.set_clock(false, clock),
@@ -32,6 +34,7 @@ impl ClockControl {
     }
   }
 
+  /// Return true if the specified clock is enabled, false otherwise
   pub fn clock_is_on(&self, clock: Clock) -> bool {
     match clock {
       Clock::HSI | Clock::HSE | Clock::PLL => self.cr.clock_is_on(clock),
@@ -39,6 +42,7 @@ impl ClockControl {
     }
   }
 
+  /// Return true if the specified clock is ready for use, false otherwise
   pub fn clock_is_ready(&self, clock: Clock) -> bool {
     match clock {
       Clock::HSI | Clock::HSE | Clock::PLL => self.cr.clock_is_ready(clock),
@@ -47,6 +51,8 @@ impl ClockControl {
   }
 }
 
+/// The CR register only controls the PLL, HSE, and HSI clocks, if another clock is passed in as an
+/// argument to any of the methods that take a clock argument the kernel will panic.
 #[derive(Copy, Clone)]
 pub struct CR {
   base_addr: u32,
@@ -63,6 +69,9 @@ impl Register for CR {
 }
 
 impl CR {
+  /// Set a clock on if `enable` is true, off otherwise. If `enable` is true, the return value is
+  /// always true. If `enable` is false, the return value will be true if the clock was
+  /// successfully disabled.
   fn set_clock(&self, enable: bool, clock: Clock) -> bool {
     let mask = match clock {
       Clock::PLL => 1 << 24,
@@ -84,6 +93,7 @@ impl CR {
     }
   }
 
+  /// Return true if the specified clock is enabled.
   fn clock_is_on(&self, clock: Clock) -> bool {
     let mask = match clock {
       Clock::PLL => 1 << 24,
@@ -98,6 +108,7 @@ impl CR {
     }
   }
 
+  /// Return true if the specified clock is ready for use.
   fn clock_is_ready(&self, clock: Clock) -> bool {
     let mask = match clock {
       Clock::PLL => 1 << 25,
@@ -113,6 +124,8 @@ impl CR {
   }
 }
 
+/// The CR2 register only controls the HSI48 and HSI14 clocks, if another clock is passed in as an
+/// argument to any of the methods that take a clock argument the kernel will panic.
 #[derive(Copy, Clone)]
 pub struct CR2 {
   base_addr: u32,
@@ -129,6 +142,9 @@ impl Register for CR2 {
 }
 
 impl CR2 {
+  /// Set a clock on if `enable` is true, off otherwise. If `enable` is true, the return value is
+  /// always true. If `enable` is false, the return value will be true if the clock was
+  /// successfully disabled.
   fn set_clock(&self, enable: bool, clock: Clock) -> bool {
     let mask = match clock {
       Clock::HSI48 => 1 << 16,
@@ -149,6 +165,7 @@ impl CR2 {
     }
   }
 
+  /// Return true if the specified clock is enabled.
   fn clock_is_on(&self, clock: Clock) -> bool {
     let mask = match clock {
       Clock::HSI48 => 1 << 16,
@@ -162,6 +179,7 @@ impl CR2 {
     }
   }
 
+  /// Return true if the specified clock is ready for use.
   fn clock_is_ready(&self, clock: Clock) -> bool {
     let mask = match clock {
       Clock::HSI48 => 1 << 17,
