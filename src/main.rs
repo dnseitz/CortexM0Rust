@@ -58,7 +58,7 @@ pub fn start() -> ! {
 
   let clock_rate = rcc.get_system_clock_rate();
   
-  let mut ticks: u32 = 5_000;
+  let mut ticks: u32 = 20_000;
   loop {
     pb3.set();
     delay(ticks);

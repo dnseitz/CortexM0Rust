@@ -6,6 +6,46 @@ use super::{Peripheral, Register};
 mod clock_control;
 mod config;
 
+mod clock_rate {
+  static mut clock_rate: u32 = 0;
+
+  pub fn get_system_clock_rate() -> u32 {
+    unsafe { 
+      clock_rate 
+    }
+  }
+
+  pub fn update_system_clock_rate() {
+    const HSI_VALUE: u32 = 8_000_000;
+    const HSE_VALUE: u32 = 8_000_000;
+    const HSI48_VALUE: u32 = 48_000_000;
+    use super::Clock;
+
+    let rcc = super::rcc();
+    let rate = match rcc.get_system_clock_source() {
+      Clock::HSI => HSI_VALUE,
+      Clock::HSE => HSE_VALUE,
+      Clock::HSI48 => HSI48_VALUE,
+      Clock::PLL => {
+        let multiplier = rcc.get_pll_multiplier() as u32;
+        let source = rcc.get_pll_source();
+        let prediv_factor = rcc.get_pll_prediv_factor() as u32;
+
+        match source {
+          Clock::HSE => (HSE_VALUE/prediv_factor) * multiplier,
+          Clock::HSI48 => (HSI48_VALUE/prediv_factor) * multiplier,
+          Clock::HSI => (HSI_VALUE/2) * multiplier,
+          _ => panic!("CRR::update_system_core_clock - invalid clock driving the PLL!"),
+        }
+      },
+      _ => panic!("CRR::update_system_core_clock - invalid clock for the system clock!"),
+    };
+
+    unsafe { clock_rate = rate; }
+  }
+
+}
+
 pub fn rcc() -> RCC {
   RCC::rcc()
 }
@@ -72,6 +112,7 @@ impl RCC {
   /// HSI48 clocks, if another clock is specified the kernel will panic
   pub fn set_system_clock_source(&self, clock: Clock) {
     self.cfgr.set_system_clock_source(clock);
+    clock_rate::update_system_clock_rate();
   }
 
   /// Get the clock driving the PLL
@@ -109,28 +150,7 @@ impl RCC {
   }
 
   pub fn get_system_clock_rate(&self) -> u32 {
-    // TODO: Come back and derive these from cr
-    const HSI_VALUE: u32 = 8_000_000;
-    const HSE_VALUE: u32 = 8_000_000;
-    const HSI48_VALUE: u32 = 48_000_000;
-    match self.get_system_clock_source() {
-      Clock::HSI => HSI_VALUE,
-      Clock::HSE => HSE_VALUE,
-      Clock::HSI48 => HSI48_VALUE,
-      Clock::PLL => {
-        let multiplier = self.get_pll_multiplier() as u32;
-        let source = self.get_pll_source();
-        let prediv_factor = self.get_pll_prediv_factor() as u32;
-
-        match source {
-          Clock::HSE => (HSE_VALUE/prediv_factor) * multiplier,
-          Clock::HSI48 => (HSI48_VALUE/prediv_factor) * multiplier,
-          Clock::HSI => (HSI_VALUE/2) * multiplier,
-          _ => panic!("CRR::update_system_core_clock - invalid clock driving the PLL!"),
-        }
-      },
-      _ => panic!("CRR::update_system_core_clock - invalid clock for the system clock!"),
-    }
+    clock_rate::get_system_clock_rate()
   }
 }
 
