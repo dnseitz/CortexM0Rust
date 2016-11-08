@@ -20,6 +20,7 @@ mod clock_rate {
     const HSE_VALUE: u32 = 8_000_000;
     const HSI48_VALUE: u32 = 48_000_000;
     use super::Clock;
+    use super::super::systick;
 
     let rcc = super::rcc();
     let rate = match rcc.get_system_clock_source() {
@@ -42,6 +43,9 @@ mod clock_rate {
     };
 
     unsafe { clock_rate = rate; }
+    let systick = systick::systick();
+    // Interrupt every milisecond
+    systick.set_reload_value(rate / 1000);
   }
 
 }

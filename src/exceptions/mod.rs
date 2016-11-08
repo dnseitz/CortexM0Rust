@@ -1,7 +1,9 @@
 
+use super::timer;
+
 #[cfg(not(test))]
 #[link_section = ".exceptions"]
-static EXCEPTIONS: [Option<fn() -> !>; 14] = [Some(default_handler),  // NMI
+static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
                                               Some(default_handler),  // Hard Fault
                                               Some(default_handler),  // Memory Management Fault
                                               Some(default_handler),  // Bus Fault
@@ -14,16 +16,16 @@ static EXCEPTIONS: [Option<fn() -> !>; 14] = [Some(default_handler),  // NMI
                                               None,                   // Reserved for Debug
                                               None,                   // Reserved
                                               Some(default_handler),  // PendSV
-                                              Some(default_handler)]; // SysTick
+                                              Some(systick_handler)]; // SysTick
                                               
 
 
-pub fn default_handler() -> ! {
+pub fn default_handler() {
   if cfg!(not(test)) {
     unsafe { asm!("bkpt"); }
   }
-
-  loop {}
 }
 
-
+pub fn systick_handler() {
+  timer::Timer::tick();
+}

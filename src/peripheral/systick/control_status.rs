@@ -1,6 +1,11 @@
 
 use super::super::Register;
 
+pub enum ClockSource {
+  Reference,
+  Processor,
+}
+
 /// The control and status register for the SysTick timer
 #[derive(Copy, Clone)]
 pub struct CSR {
@@ -47,6 +52,18 @@ impl CSR {
       else {
         *reg &= !mask;
       }
+    }
+  }
+
+  pub fn set_source(&self, source: ClockSource) {
+    let mask = 0b1 << 2;
+
+    unsafe {
+      let reg = self.addr();
+      match source {
+        ClockSource::Reference => *reg &= !mask,
+        ClockSource::Processor => *reg |= mask,
+      };
     }
   }
 

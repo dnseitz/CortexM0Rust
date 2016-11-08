@@ -6,9 +6,11 @@
 mod exceptions;
 mod peripheral;
 mod math;
+mod timer;
 
 use peripheral::gpio;
 use peripheral::rcc;
+use peripheral::systick;
 
 #[no_mangle]
 pub fn start() -> ! {
@@ -23,6 +25,7 @@ pub fn start() -> ! {
   let pb3_type = pb3.get_type();
 
   let rcc = rcc::rcc();
+  let systick = systick::systick();
 
   // Check system clock source...
   let clock_source: rcc::Clock = rcc.get_system_clock_source();
@@ -49,6 +52,11 @@ pub fn start() -> ! {
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
   // Switch over to the PLL for running the system
   rcc.set_system_clock_source(rcc::Clock::PLL);
+  
+  systick.use_processor_clock();
+  systick.clear_current_value();
+  systick.enable_counter();
+  systick.enable_interrupts();
 
   // Make sure the PLL is the new system source
   let new_clock_source: rcc::Clock = rcc.get_system_clock_source();
@@ -58,18 +66,19 @@ pub fn start() -> ! {
 
   let clock_rate = rcc.get_system_clock_rate();
   
-  let mut ticks: u32 = 20_000;
+  let mut ms_delay: u32 = 500;
   loop {
+    let timer = timer::Timer::get_current();
     pb3.set();
-    delay(ticks);
+    timer::Timer::delay_ms(ms_delay);
     pb3.reset();
-    delay(ticks);
+    timer::Timer::delay_ms(ms_delay);
+    ms_delay += 50;
+    if ms_delay > 1000 {
+      ms_delay = 0;
+    }
   }
 
-}
-
-fn delay(n: u32) {
-  for _ in 0..n {}
 }
 
 mod vector_table {

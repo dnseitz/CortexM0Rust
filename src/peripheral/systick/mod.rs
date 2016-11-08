@@ -50,6 +50,14 @@ impl SysTick {
     self.csr.set_interrupt(false);
   }
 
+  pub fn use_processor_clock(&self) {
+    self.csr.set_source(control_status::ClockSource::Processor);
+  }
+
+  pub fn use_reference_clock(&self) {
+    self.csr.set_source(control_status::ClockSource::Reference);
+  }
+
   pub fn get_reload_value(&self) -> u32 {
     self.rvr.get_reload_value()
   }
