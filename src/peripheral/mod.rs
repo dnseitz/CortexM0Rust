@@ -3,6 +3,7 @@
 
 pub mod rcc;
 pub mod gpio;
+pub mod systick;
 
 pub trait Peripheral {
   fn mem_addr(&self) -> u32;
