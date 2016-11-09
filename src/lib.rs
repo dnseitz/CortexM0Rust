@@ -13,7 +13,9 @@ use peripheral::rcc;
 use peripheral::systick;
 
 pub use math::{__aeabi_uidiv, __aeabi_uidivmod};
+#[cfg(not(test))]
 pub use vector_table::RESET;
+#[cfg(not(test))]
 pub use exceptions::EXCEPTIONS;
 
 #[no_mangle]

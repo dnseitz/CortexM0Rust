@@ -63,5 +63,8 @@ gdb-st: debug
 gdb-ocd: debug
 	@$(gdb) $(ocd_gdb_flags) $(debug_build)
 
+test:
+	@$(cargo) test
+
 size: debug
 
