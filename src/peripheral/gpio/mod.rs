@@ -1,5 +1,6 @@
 
 use super::Peripheral;
+use core::intrinsics::{volatile_load, volatile_store};
 
 /// An IO group containing up to 16 pins. For
 /// some reason the datasheet shows the memory
@@ -80,7 +81,7 @@ impl GPIO {
     };
     unsafe {
       let ahbenr = (RCC + RCC_AHBENR) as *mut u32;
-      *ahbenr |= io_group_enable;
+      volatile_store(ahbenr, volatile_load(ahbenr) | io_group_enable);
     }
   }
 }
@@ -123,7 +124,7 @@ impl GPIOPort {
       // The mode register is at offset 0x0, so no need to add anything
       let moder = gpio.mem_addr as *mut u32;
       // The mode field is 2 bits wide, so shift over 2 * port_num to get to the right field
-      (*moder & (0b11 << (self.port * 2))) >> (self.port * 2)
+      (volatile_load(moder) & (0b11 << (self.port * 2))) >> (self.port * 2)
     };
 
     match set_bits {
@@ -147,7 +148,7 @@ impl GPIOPort {
     unsafe {
       let moder = gpio.mem_addr as *mut u32;
       // Again, the mode field for each port is 2 bits wide, so shift 2 * port_num
-      *moder |= mask << (self.port * 2);
+      volatile_store(moder, volatile_load(moder) | mask << (self.port * 2));
     }
   }
 
@@ -156,7 +157,7 @@ impl GPIOPort {
     let gpio = GPIO::group(self.group);
     let set_bits = unsafe {
       let otyper = (gpio.mem_addr + OTYPER) as *mut u32;
-      (*otyper & (0b1 << self.port)) >> self.port
+      (volatile_load(otyper) & (0b1 << self.port)) >> self.port
     };
 
     match set_bits {
@@ -176,7 +177,7 @@ impl GPIOPort {
 
     unsafe {
       let otyper = (gpio.mem_addr + OTYPER) as *mut u32;
-      *otyper |= mask << self.port;
+      volatile_store(otyper, volatile_load(otyper) | mask << self.port);
     }
   }
 
@@ -187,7 +188,7 @@ impl GPIOPort {
     unsafe {
       let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
       // The low half of the register asserts the pin
-      *bsrr |= 1 << self.port;
+      volatile_store(bsrr, volatile_load(bsrr) | 1 << self.port);
     }
   }
 
@@ -198,7 +199,7 @@ impl GPIOPort {
     unsafe {
       let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
       // The high half deasserts the pin, so add 16 to the port_num
-      *bsrr |= 1 << (16 + self.port);
+      volatile_store(bsrr, volatile_load(bsrr) | 1 << (16 + self.port));
     }
   }
 }

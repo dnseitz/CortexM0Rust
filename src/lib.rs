@@ -1,7 +1,7 @@
 #![feature(lang_items)]
+#![feature(core_intrinsics)]
 #![feature(asm)]
 #![no_std]
-#![no_main]
 
 mod exceptions;
 mod peripheral;
@@ -12,6 +12,10 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 
+pub use math::{__aeabi_uidiv, __aeabi_uidivmod};
+pub use vector_table::RESET;
+pub use exceptions::EXCEPTIONS;
+
 #[no_mangle]
 pub fn start() -> ! {
   gpio::GPIO::enable(gpio::GPIOGroup::B);
@@ -21,14 +25,14 @@ pub fn start() -> ! {
   pb3.set_type(gpio::GPIOType::PushPull);
 
   // Just looking...
-  let pb3_mode = pb3.get_mode();
-  let pb3_type = pb3.get_type();
+  //let pb3_mode = pb3.get_mode();
+  //let pb3_type = pb3.get_type();
 
   let rcc = rcc::rcc();
   let systick = systick::systick();
 
   // Check system clock source...
-  let clock_source: rcc::Clock = rcc.get_system_clock_source();
+  //let clock_source: rcc::Clock = rcc.get_system_clock_source();
   
   // 12 is the max we can go since our input clock is (8MHz / 2)
   let mut clock_multiplier: u8 = 12;
@@ -46,12 +50,14 @@ pub fn start() -> ! {
   rcc.enable_clock(rcc::Clock::PLL);
 
   // Just checking that it's on...
-  let pll_enabled = rcc.clock_is_on(rcc::Clock::PLL);
+  //let pll_enabled = rcc.clock_is_on(rcc::Clock::PLL);
 
   // Wait for it to be ready
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
   // Switch over to the PLL for running the system
   rcc.set_system_clock_source(rcc::Clock::PLL);
+
+  let clock_rate = rcc.get_system_clock_rate();
   
   systick.use_processor_clock();
   systick.clear_current_value();
@@ -59,16 +65,16 @@ pub fn start() -> ! {
   systick.enable_interrupts();
 
   // Make sure the PLL is the new system source
-  let new_clock_source: rcc::Clock = rcc.get_system_clock_source();
+  //let new_clock_source: rcc::Clock = rcc.get_system_clock_source();
 
   // This should be false since the PLL is running off of it...
-  let did_disable_hsi = rcc.disable_clock(rcc::Clock::HSI);
+  //let did_disable_hsi = rcc.disable_clock(rcc::Clock::HSI);
 
-  let clock_rate = rcc.get_system_clock_rate();
+  //let clock_rate = rcc.get_system_clock_rate();
   
   let mut ms_delay: u32 = 500;
   loop {
-    let timer = timer::Timer::get_current();
+    //let timer = timer::Timer::get_current();
     pb3.set();
     timer::Timer::delay_ms(ms_delay);
     pb3.reset();
@@ -84,7 +90,8 @@ pub fn start() -> ! {
 mod vector_table {
   #[cfg(not(test))]
   #[link_section = ".reset"]
-  static RESET: fn() -> ! = ::start;
+  #[no_mangle]
+  pub static RESET: fn() -> ! = ::start;
 }
 
 #[cfg(not(test))]

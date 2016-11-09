@@ -2,6 +2,7 @@
 
 use super::super::Register;
 use super::Clock;
+use core::intrinsics::{volatile_load, volatile_store};
 
 #[derive(Copy, Clone)]
 pub struct ConfigControl {
@@ -86,7 +87,7 @@ impl CFGR {
   fn get_system_clock_source(&self) -> Clock {
     let set_bits = unsafe {
       let reg = self.addr();
-      (*reg & (0b11 << 2)) >> 2
+      (volatile_load(reg) & (0b11 << 2)) >> 2
     };
 
     match set_bits {
@@ -112,15 +113,15 @@ impl CFGR {
       let reg = self.addr();
 
       // Zero the selection first (does this have any side effects)?
-      *reg &= !0b11;
-      *reg |= mask;
+      volatile_store(reg, volatile_load(reg) & !0b11);
+      volatile_store(reg, volatile_load(reg) | mask);
     }
   }
 
   fn get_pll_source(&self) -> Clock {
     let set_bits = unsafe {
       let reg = self.addr();
-      (*reg & (0b11 << 15)) >> 15
+      (volatile_load(reg) & (0b11 << 15)) >> 15
     };
 
     match set_bits {
@@ -143,15 +144,15 @@ impl CFGR {
       let reg = self.addr();
 
       // Zero the register first
-      *reg &= !0b11 << 18;
-      *reg |= mask;
+      volatile_store(reg, volatile_load(reg) & !0b11 << 18);
+      volatile_store(reg, volatile_load(reg) | mask);
     }
   }
 
   fn get_pll_multiplier(&self) -> u8 {
     let set_bits = unsafe {
       let reg = self.addr();
-      (*reg & (0b1111 << 18)) >> 18
+      (volatile_load(reg) & (0b1111 << 18)) >> 18
     };
     
     // Just the way the multiplier is set up...
@@ -172,8 +173,8 @@ impl CFGR {
       let reg = self.addr();
 
       // Zero the register field
-      *reg &= !0b1111 << 18;
-      *reg |= mask;
+      volatile_store(reg, volatile_load(reg) & !0b1111 << 18);
+      volatile_store(reg, volatile_load(reg) | mask);
     }
   }
 }
@@ -201,7 +202,7 @@ impl CFGR2 {
   fn get_pll_prediv_factor(&self) -> u8 {
     let set_bits = unsafe {
       let reg = self.addr();
-      *reg & 0b1111
+      volatile_load(reg) & 0b1111
     };
     
     // Division factor is 1 greater than the value of the bits set
@@ -218,8 +219,8 @@ impl CFGR2 {
       let reg = self.addr();
 
       // Zero the register field
-      *reg &= !0b1111;
-      *reg |= mask;
+      volatile_store(reg, volatile_load(reg) & !0b1111);
+      volatile_store(reg, volatile_load(reg) | mask);
     }
   }
 }

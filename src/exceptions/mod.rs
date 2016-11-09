@@ -3,7 +3,8 @@ use super::timer;
 
 #[cfg(not(test))]
 #[link_section = ".exceptions"]
-static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
+#[no_mangle]
+pub static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
                                               Some(default_handler),  // Hard Fault
                                               Some(default_handler),  // Memory Management Fault
                                               Some(default_handler),  // Bus Fault

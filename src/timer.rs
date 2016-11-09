@@ -1,6 +1,8 @@
 
 static mut time: Timer = Timer { sec: 0, msec: 0, };
 
+use core::intrinsics::{volatile_load, volatile_store};
+
 #[derive(Copy, Clone)]
 pub struct Timer {
   sec: u32,
@@ -16,6 +18,7 @@ impl Timer {
   }
 
   /// Tick by 1 ms
+  #[inline(never)]
   pub fn tick() {
     unsafe {
       time.msec += 1;
@@ -25,21 +28,24 @@ impl Timer {
     }
   }
 
+  #[inline(never)]
   pub fn get_current() -> Timer {
     unsafe { time }
   }
 
+  #[inline(never)]
   pub fn delay_ms(ms: u32) {
     unsafe {
       let start: u32 = time.msec;
-      while time.msec - start < ms {/* spin */}
+      while volatile_load(&time.msec as *const u32) - start < ms {/* spin */}
     }
   }
 
+  #[inline(never)]
   pub fn delay_s(s: u32) {
     unsafe {
       let start: u32 = time.sec;
-      while time.sec - start < s {/* spin */}
+      while volatile_load(&time.sec as *const u32) - start < s {/* spin */}
     }
   }
 }

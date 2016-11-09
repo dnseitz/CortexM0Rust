@@ -1,5 +1,6 @@
 
 use super::super::Register;
+use core::intrinsics::{volatile_load, volatile_store};
 
 #[derive(Copy, Clone)]
 pub struct CVR {
@@ -27,7 +28,7 @@ impl CVR {
     unsafe {
       let reg = self.addr();
 
-      *reg & mask
+      volatile_load(reg) & mask
     }
   }
 
@@ -36,7 +37,7 @@ impl CVR {
     unsafe {
       let reg = self.addr();
 
-      *reg |= 1;
+      volatile_store(reg, 1);
     }
   }
 }
