@@ -18,6 +18,8 @@ heap_size = 256;
 _stack_start = ORIGIN(RAM) + LENGTH(RAM);
 _stack_end = _stack_start - stack_size;
 
+ENTRY(start);
+
 SECTIONS
 {
   .vector_table ORIGIN(FLASH) :

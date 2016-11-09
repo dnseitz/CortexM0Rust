@@ -3,6 +3,9 @@ name = "altos_rust"
 version = "0.1.0"
 authors = ["Daniel Seitz <dnseitz@gmail.com>"]
 
+[lib]
+crate-type = ["staticlib"]
+
 [profile.dev]
 panic = "abort"
 
