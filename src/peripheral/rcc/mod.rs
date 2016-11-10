@@ -11,18 +11,12 @@ mod config;
 mod clock_rate {
   static mut clock_rate: u32 = 0;
 
-  #[inline(never)]
   pub fn get_system_clock_rate() -> u32 {
     unsafe { 
       clock_rate 
     }
   }
 
-  // For some reason, if we allow rust to inline this function (in the release build) it causes
-  // some kind of bug where the clock rate will be seen as the old value even when it is running at
-  // a higher frequency, so the timer gets thrown off... We'll have to look into this a bit more to
-  // see if we can find another solution, though this one works for now.
-  //#[inline(never)]
   pub fn update_system_clock_rate() {
     const HSI_VALUE: u32 = 8_000_000;
     const HSE_VALUE: u32 = 8_000_000;
@@ -124,6 +118,9 @@ impl RCC {
   /// HSI48 clocks, if another clock is specified the kernel will panic
   pub fn set_system_clock_source(&self, clock: Clock) {
     self.cfgr.set_system_clock_source(clock);
+    // We need a memory barrier here since the hardware is writing to the system clock bit
+    // If we access the register too fast the old value could still be in the cache un-updated, 
+    // and we could get the wrong system clock when we calculate the clock rate.
     unsafe { dmb(); }
     clock_rate::update_system_clock_rate();
   }
