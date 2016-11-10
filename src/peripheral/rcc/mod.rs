@@ -3,6 +3,7 @@
 
 use super::{Peripheral, Register};
 use arm::dmb;
+use volatile::Volatile;
 
 mod clock_control;
 mod config;
@@ -78,8 +79,8 @@ pub struct RCC {
 }
 
 impl Peripheral for RCC {
-  fn mem_addr(&self) -> u32 {
-    self.mem_addr
+  unsafe fn mem_addr(&self) -> Volatile<u32> {
+    Volatile::new(self.mem_addr as *const u32)
   }
 }
 

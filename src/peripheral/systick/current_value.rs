@@ -1,6 +1,5 @@
 
 use super::super::Register;
-use core::intrinsics::{volatile_load, volatile_store};
 
 #[derive(Copy, Clone)]
 pub struct CVR {
@@ -28,16 +27,16 @@ impl CVR {
     unsafe {
       let reg = self.addr();
 
-      volatile_load(reg) & mask
+      *reg & mask
     }
   }
 
   pub fn clear_current_value(&self) {
     // A write to this register clears its value to 0
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
-      volatile_store(reg, 1);
+      reg.store(1);
     }
   }
 }

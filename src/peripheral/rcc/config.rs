@@ -2,7 +2,6 @@
 
 use super::super::Register;
 use super::Clock;
-use core::intrinsics::{volatile_load, volatile_store};
 
 #[derive(Copy, Clone)]
 pub struct ConfigControl {
@@ -87,7 +86,7 @@ impl CFGR {
   fn get_system_clock_source(&self) -> Clock {
     let set_bits = unsafe {
       let reg = self.addr();
-      (volatile_load(reg) & (0b11 << 2)) >> 2
+      (*reg & (0b11 << 2)) >> 2
     };
 
     match set_bits {
@@ -110,18 +109,18 @@ impl CFGR {
     };
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
       // Zero the selection first (does this have any side effects)?
-      volatile_store(reg, volatile_load(reg) & !0b11);
-      volatile_store(reg, volatile_load(reg) | mask);
+      *reg &= !0b11;
+      *reg |= mask;
     }
   }
 
   fn get_pll_source(&self) -> Clock {
     let set_bits = unsafe {
       let reg = self.addr();
-      (volatile_load(reg) & (0b11 << 15)) >> 15
+      (*reg & (0b11 << 15)) >> 15
     };
 
     match set_bits {
@@ -141,18 +140,18 @@ impl CFGR {
     };
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
       // Zero the register first
-      volatile_store(reg, volatile_load(reg) & !0b11 << 18);
-      volatile_store(reg, volatile_load(reg) | mask);
+      *reg &= !0b11 << 18;
+      *reg |= mask;
     }
   }
 
   fn get_pll_multiplier(&self) -> u8 {
     let set_bits = unsafe {
       let reg = self.addr();
-      (volatile_load(reg) & (0b1111 << 18)) >> 18
+      (*reg & (0b1111 << 18)) >> 18
     };
     
     // Just the way the multiplier is set up...
@@ -170,11 +169,11 @@ impl CFGR {
     let mask = ((mul - 2) as u32) << 18;
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
       // Zero the register field
-      volatile_store(reg, volatile_load(reg) & !0b1111 << 18);
-      volatile_store(reg, volatile_load(reg) | mask);
+      *reg &= !0b1111 << 18;
+      *reg |= mask;
     }
   }
 }
@@ -202,7 +201,7 @@ impl CFGR2 {
   fn get_pll_prediv_factor(&self) -> u8 {
     let set_bits = unsafe {
       let reg = self.addr();
-      volatile_load(reg) & 0b1111
+      *reg & 0b1111
     };
     
     // Division factor is 1 greater than the value of the bits set
@@ -216,11 +215,11 @@ impl CFGR2 {
     let mask = (factor - 1) as u32;
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
       // Zero the register field
-      volatile_store(reg, volatile_load(reg) & !0b1111);
-      volatile_store(reg, volatile_load(reg) | mask);
+      *reg &= !0b1111;
+      *reg |= mask;
     }
   }
 }

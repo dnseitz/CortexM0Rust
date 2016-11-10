@@ -1,6 +1,6 @@
 
 use super::Peripheral;
-use core::intrinsics::{volatile_load, volatile_store};
+use volatile::Volatile;
 
 /// An IO group containing up to 16 pins. For
 /// some reason the datasheet shows the memory
@@ -39,8 +39,8 @@ pub struct GPIO {
 }
 
 impl Peripheral for GPIO {
-  fn mem_addr(&self) -> u32 {
-    self.mem_addr
+  unsafe fn mem_addr(&self) -> Volatile<u32> {
+    Volatile::new(self.mem_addr as *const u32)
   }
 }
 
@@ -80,8 +80,8 @@ impl GPIO {
       GPIOGroup::F => 1 << 22,
     };
     unsafe {
-      let ahbenr = (RCC + RCC_AHBENR) as *mut u32;
-      volatile_store(ahbenr, volatile_load(ahbenr) | io_group_enable);
+      let mut ahbenr = Volatile::new((RCC + RCC_AHBENR) as *mut u32);
+      *ahbenr |= io_group_enable;
     }
   }
 }
@@ -122,9 +122,9 @@ impl GPIOPort {
     let gpio = GPIO::group(self.group);
     let set_bits = unsafe {
       // The mode register is at offset 0x0, so no need to add anything
-      let moder = gpio.mem_addr as *mut u32;
+      let moder = gpio.mem_addr();
       // The mode field is 2 bits wide, so shift over 2 * port_num to get to the right field
-      (volatile_load(moder) & (0b11 << (self.port * 2))) >> (self.port * 2)
+      (*moder & (0b11 << (self.port * 2))) >> (self.port * 2)
     };
 
     match set_bits {
@@ -146,9 +146,9 @@ impl GPIOPort {
     };
 
     unsafe {
-      let moder = gpio.mem_addr as *mut u32;
+      let mut moder = gpio.mem_addr();
       // Again, the mode field for each port is 2 bits wide, so shift 2 * port_num
-      volatile_store(moder, volatile_load(moder) | mask << (self.port * 2));
+      *moder |= mask << (self.port * 2);
     }
   }
 
@@ -156,8 +156,8 @@ impl GPIOPort {
     const OTYPER: u32 = 0x4;
     let gpio = GPIO::group(self.group);
     let set_bits = unsafe {
-      let otyper = (gpio.mem_addr + OTYPER) as *mut u32;
-      (volatile_load(otyper) & (0b1 << self.port)) >> self.port
+      let otyper = gpio.mem_addr() + OTYPER;
+      (*otyper & (0b1 << self.port)) >> self.port
     };
 
     match set_bits {
@@ -176,8 +176,8 @@ impl GPIOPort {
     };
 
     unsafe {
-      let otyper = (gpio.mem_addr + OTYPER) as *mut u32;
-      volatile_store(otyper, volatile_load(otyper) | mask << self.port);
+      let mut otyper = gpio.mem_addr() + OTYPER;
+      *otyper |= mask << self.port;
     }
   }
 
@@ -186,9 +186,9 @@ impl GPIOPort {
     const BSRR: u32 = 0x18;
     let gpio = GPIO::group(self.group);
     unsafe {
-      let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
+      let mut bsrr = gpio.mem_addr() + BSRR;
       // The low half of the register asserts the pin
-      volatile_store(bsrr, volatile_load(bsrr) | 1 << self.port);
+      *bsrr |= 1 << self.port;
     }
   }
 
@@ -197,9 +197,9 @@ impl GPIOPort {
     const BSRR: u32 = 0x18;
     let gpio = GPIO::group(self.group);
     unsafe {
-      let bsrr = (gpio.mem_addr + BSRR) as *mut u32;
+      let mut bsrr = gpio.mem_addr() + BSRR;
       // The high half deasserts the pin, so add 16 to the port_num
-      volatile_store(bsrr, volatile_load(bsrr) | 1 << (16 + self.port));
+      *bsrr |= 1 << (16 + self.port);
     }
   }
 }

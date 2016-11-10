@@ -3,6 +3,27 @@
 use super::{Volatile, RawVolatile};
 
 #[test]
+fn add_assign_volatile_ptr() {
+  unsafe {
+    let mut ptr = Volatile::new(100 as *const _);
+    ptr += 100;
+
+    assert_eq!(ptr.as_ptr() as u32, 200);
+  }
+}
+
+#[test]
+fn add_volatile_ptr() {
+  unsafe {
+    let ptr = Volatile::new(100 as *const _);
+    let ptr2 = ptr + 100;
+
+    assert_eq!(ptr.as_ptr() as u32, 100);
+    assert_eq!(ptr2.as_ptr() as u32, 200);
+  }
+}
+
+#[test]
 fn store_volatile() {
   let num = 0xFF00;
   unsafe {

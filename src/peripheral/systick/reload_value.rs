@@ -1,6 +1,5 @@
 
 use super::super::Register;
-use core::intrinsics::{volatile_load, volatile_store};
 
 /// The Reload Value Register specifies the start value to load into the SYST_CVR (Current Value
 /// Register)
@@ -31,7 +30,7 @@ impl RVR {
     unsafe {
       let reg = self.addr();
 
-      volatile_load(reg) & mask
+      *reg & mask
     }
   }
 
@@ -43,9 +42,9 @@ impl RVR {
     }
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
 
-      volatile_store(reg, value);
+      reg.store(value);
     }
   }
 }

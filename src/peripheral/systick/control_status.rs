@@ -1,6 +1,5 @@
 
 use super::super::Register;
-use core::intrinsics::{volatile_load, volatile_store};
 
 pub enum ClockSource {
   Reference,
@@ -32,12 +31,12 @@ impl CSR {
     let mask = 0b1 << 0;
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
       if enable {
-        volatile_store(reg, volatile_load(reg) | mask);
+        *reg |= mask;
       }
       else {
-        volatile_store(reg, volatile_load(reg) & !mask);
+        *reg &= !mask;
       }
     }
   }
@@ -46,12 +45,12 @@ impl CSR {
     let mask = 0b1 << 1;
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
       if enable {
-        volatile_store(reg, volatile_load(reg) | mask);
+        *reg |= mask;
       }
       else {
-        volatile_store(reg, volatile_load(reg) & !mask);
+        *reg &= !mask;
       }
     }
   }
@@ -60,10 +59,10 @@ impl CSR {
     let mask = 0b1 << 2;
 
     unsafe {
-      let reg = self.addr();
+      let mut reg = self.addr();
       match source {
-        ClockSource::Reference => volatile_store(reg, volatile_load(reg) & !mask),
-        ClockSource::Processor => volatile_store(reg, volatile_load(reg) | mask),
+        ClockSource::Reference => *reg &= !mask,
+        ClockSource::Processor => *reg |= mask,
       };
     }
   }
@@ -74,7 +73,7 @@ impl CSR {
 
     unsafe {
       let reg = self.addr();
-      volatile_load(reg) & mask != 0
+      *reg & mask != 0
     }
   }
 }

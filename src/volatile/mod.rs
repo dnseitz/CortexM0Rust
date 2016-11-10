@@ -5,14 +5,22 @@ use core::ops::*;
 use core::intrinsics::{volatile_load, volatile_store};
 
 #[derive(Copy, Clone)]
-struct Volatile<T: Copy>(RawVolatile<T>);
+pub struct Volatile<T: Copy>(RawVolatile<T>);
 
 #[derive(Copy, Clone)]
-struct RawVolatile<T: Copy>(*const T);
+pub struct RawVolatile<T: Copy>(*const T);
 
 impl<T: Copy> Volatile<T> {
-  unsafe fn new(ptr: *const T) -> Self {
+  pub unsafe fn new(ptr: *const T) -> Self {
     Volatile(RawVolatile::new(ptr))
+  }
+
+  fn as_ptr(self) -> *const T {
+    (self.0).0
+  }
+
+  fn as_mut_ptr(self) -> *mut T {
+    (self.0).0 as *mut T
   }
 }
 
@@ -30,18 +38,34 @@ impl<T: Copy> DerefMut for Volatile<T> {
   }
 }
 
+impl<T: Add<Output=T> + Copy> Add<T> for Volatile<T> where u32: Add<T, Output=u32> {
+  type Output = Volatile<T>;
+
+  fn add(self, rhs: T) -> Self::Output {
+    Volatile(RawVolatile(((self.0).0 as u32 + rhs) as *const T))
+  }
+}
+
+impl<T: Add<Output=T> + Copy> AddAssign<T> for Volatile<T> where u32: Add<T, Output=u32> {
+  fn add_assign(&mut self, rhs: T) {
+    self.0 = RawVolatile(((self.0).0 as u32 + rhs) as *const T);
+  }
+}
+
+/*** Raw Volatile Implementation ***/
+
 impl<T: Copy> RawVolatile<T> {
   fn new(ptr: *const T) -> Self {
     RawVolatile(ptr)
   }
 
-  fn store(&mut self, rhs: T) {
+  pub fn store(&mut self, rhs: T) {
     unsafe {
       volatile_store(self.0 as *mut T, rhs);
     }
   }
 
-  fn load(&self) -> T {
+  pub fn load(&self) -> T {
     unsafe {
       volatile_load(self.0 as *const T)
     }

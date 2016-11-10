@@ -5,8 +5,10 @@ pub mod rcc;
 pub mod gpio;
 pub mod systick;
 
+use volatile::Volatile;
+
 pub trait Peripheral {
-  fn mem_addr(&self) -> u32;
+  unsafe fn mem_addr(&self) -> Volatile<u32>;
 }
 
 pub trait Register {
@@ -14,7 +16,7 @@ pub trait Register {
 
   fn base_addr(&self) -> u32;
   fn mem_offset(&self) -> u32;
-  unsafe fn addr(&self) -> *mut u32 {
-    (self.base_addr() + self.mem_offset()) as *mut u32
+  unsafe fn addr(&self) -> Volatile<u32> {
+    Volatile::new((self.base_addr() + self.mem_offset()) as *const u32)
   }
 }

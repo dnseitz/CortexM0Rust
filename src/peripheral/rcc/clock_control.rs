@@ -2,7 +2,6 @@
 
 use super::super::Register;
 use super::Clock;
-use core::intrinsics::{volatile_load, volatile_store};
 
 /// Clock Control Register
 #[derive(Copy, Clone)]
@@ -86,14 +85,14 @@ impl CR {
     };
     
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
+      let mut reg = self.addr();
       if enable {
-        volatile_store(reg, volatile_load(reg) | mask);
+        *reg |= mask;
         true
       }
       else {
-        volatile_store(reg, volatile_load(reg) & !mask);
-        (volatile_load(reg) & mask) == 0
+        *reg &= !mask;
+        (*reg & mask) == 0
       }
     }
   }
@@ -108,8 +107,8 @@ impl CR {
     };
 
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
-      (volatile_load(reg) & mask) != 0
+      let reg = self.addr();
+      (*reg & mask) != 0
     }
   }
 
@@ -123,8 +122,8 @@ impl CR {
     };
 
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
-      (volatile_load(reg) & mask) != 0
+      let reg = self.addr();
+      (*reg & mask) != 0
     }
   }
 }
@@ -162,14 +161,14 @@ impl CR2 {
     };
 
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
+      let mut reg = self.addr();
       if enable {
-        volatile_store(reg, volatile_load(reg) | mask);
+        *reg |= mask;
         true
       }
       else {
-        volatile_store(reg, volatile_load(reg) & !mask);
-        (volatile_load(reg) & mask) == 0
+        *reg &= !mask;
+        (*reg & mask) == 0
       }
     }
   }
@@ -183,8 +182,8 @@ impl CR2 {
     };
 
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
-      (volatile_load(reg) & mask) != 0
+      let reg = self.addr();
+      (*reg & mask) != 0
     }
   }
 
@@ -197,8 +196,8 @@ impl CR2 {
     };
 
     unsafe {
-      let reg = (self.base_addr + self.mem_offset()) as *mut u32;
-      (volatile_load(reg) & mask) != 0
+      let reg = self.addr();
+      (*reg & mask) != 0
     }
   }
 }
