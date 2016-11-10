@@ -8,6 +8,7 @@ mod peripheral;
 mod math;
 mod timer;
 mod volatile;
+mod arm;
 
 use peripheral::gpio;
 use peripheral::rcc;

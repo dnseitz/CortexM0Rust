@@ -2,6 +2,7 @@
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 
 use super::{Peripheral, Register};
+use arm::dmb;
 
 mod clock_control;
 mod config;
@@ -122,7 +123,7 @@ impl RCC {
   /// HSI48 clocks, if another clock is specified the kernel will panic
   pub fn set_system_clock_source(&self, clock: Clock) {
     self.cfgr.set_system_clock_source(clock);
-    unsafe { asm!("dmb"); }
+    unsafe { dmb(); }
     clock_rate::update_system_clock_rate();
   }
 

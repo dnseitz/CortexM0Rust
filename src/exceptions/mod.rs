@@ -1,5 +1,6 @@
 
 use super::timer;
+use arm::bkpt;
 
 #[cfg(not(test))]
 #[link_section = ".exceptions"]
@@ -22,9 +23,7 @@ pub static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
 
 
 pub fn default_handler() {
-  if cfg!(not(test)) {
-    unsafe { asm!("bkpt"); }
-  }
+    unsafe { bkpt(); }
 }
 
 pub fn systick_handler() {

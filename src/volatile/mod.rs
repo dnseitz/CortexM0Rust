@@ -120,7 +120,26 @@ impl<T: Div<Output=T> + Copy> DivAssign<T> for RawVolatile<T> {
   }
 }
 
+impl<T: Rem<Output=T> + Copy> Rem<T> for RawVolatile<T> {
+  type Output = T;
+
+  fn rem(self, rhs: T) -> Self::Output {
+    unsafe {
+      volatile_load(self.0) % rhs
+    }
+  }
+}
+
+impl<T: Rem<Output=T> + Copy> RemAssign<T> for RawVolatile<T> {
+  fn rem_assign(&mut self, rhs: T) {
+    unsafe {
+      volatile_store(self.0 as *mut T, volatile_load(self.0) % rhs);
+    }
+  }
+}
+
 /*** Bitwise Operators ***/
+
 impl<T: BitAnd<Output=T> + Copy> BitAnd<T> for RawVolatile<T> {
   type Output = T;
 
@@ -166,3 +185,71 @@ impl<T: BitXor<Output=T> + Copy> BitXor<T> for RawVolatile<T> {
     }
   }
 }
+
+impl<T: BitXor<Output=T> + Copy> BitXorAssign<T> for RawVolatile<T> {
+  fn bitxor_assign(&mut self, rhs: T) {
+    unsafe {
+      volatile_store(self.0 as *mut T, volatile_load(self.0) ^ rhs);
+    }
+  }
+}
+
+impl<T: Shl<T, Output=T> + Copy> Shl<T> for RawVolatile<T> {
+  type Output = T;
+
+  fn shl(self, rhs: T) -> Self::Output {
+    unsafe {
+      volatile_load(self.0) << rhs
+    }
+  }
+}
+
+impl<T: Shl<T, Output=T> + Copy> ShlAssign<T> for RawVolatile<T> {
+  fn shl_assign(&mut self, rhs: T) {
+    unsafe {
+      volatile_store(self.0 as *mut T, volatile_load(self.0) << rhs);
+    }
+  }
+}
+
+impl<T: Shr<T, Output=T> + Copy> Shr<T> for RawVolatile<T> {
+  type Output = T;
+
+  fn shr(self, rhs: T) -> Self::Output {
+    unsafe {
+      volatile_load(self.0) >> rhs
+    }
+  }
+}
+
+impl<T: Shr<T, Output=T> + Copy> ShrAssign<T> for RawVolatile<T> {
+  fn shr_assign(&mut self, rhs: T) {
+    unsafe {
+      volatile_store(self.0 as *mut T, volatile_load(self.0) >> rhs);
+    }
+  }
+}
+
+/*** Negation ***/
+
+impl<T: Neg<Output=T> + Copy> Neg for RawVolatile<T> {
+  type Output = T;
+
+  fn neg(self) -> Self::Output {
+    unsafe {
+      -volatile_load(self.0)
+    }
+  }
+}
+
+impl<T: Not<Output=T> + Copy> Not for RawVolatile<T> {
+  type Output = T;
+
+  fn not(self) -> Self::Output {
+    unsafe {
+      !volatile_load(self.0)
+    }
+  }
+}
+
+
