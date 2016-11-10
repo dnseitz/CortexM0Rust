@@ -7,6 +7,7 @@ mod exceptions;
 mod peripheral;
 mod math;
 mod timer;
+mod volatile;
 
 use peripheral::gpio;
 use peripheral::rcc;

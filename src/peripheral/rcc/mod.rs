@@ -20,7 +20,7 @@ mod clock_rate {
   // some kind of bug where the clock rate will be seen as the old value even when it is running at
   // a higher frequency, so the timer gets thrown off... We'll have to look into this a bit more to
   // see if we can find another solution, though this one works for now.
-  #[inline(never)]
+  //#[inline(never)]
   pub fn update_system_clock_rate() {
     const HSI_VALUE: u32 = 8_000_000;
     const HSE_VALUE: u32 = 8_000_000;
@@ -122,6 +122,7 @@ impl RCC {
   /// HSI48 clocks, if another clock is specified the kernel will panic
   pub fn set_system_clock_source(&self, clock: Clock) {
     self.cfgr.set_system_clock_source(clock);
+    unsafe { asm!("dmb"); }
     clock_rate::update_system_clock_rate();
   }
 
