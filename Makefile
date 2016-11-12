@@ -3,14 +3,14 @@ static_lib = lib$(binary).a
 linker_script = rust.ld
 target = cortex-m0
 
-build_path = build
+build_path = build/
 
 debug_static_lib = target/$(target)/debug/$(static_lib)
-debug_build_path = $(build_path)/debug/
+debug_build_path = $(build_path)debug/
 debug_build = $(debug_build_path)$(binary)
 
 release_static_lib = target/$(target)/release/$(static_lib)
-release_build_path = $(build_path)/release/
+release_build_path = $(build_path)release/
 release_build = $(release_build_path)$(binary)
 
 ### CARGO ###
