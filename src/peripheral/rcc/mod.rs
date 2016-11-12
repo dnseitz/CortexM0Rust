@@ -1,67 +1,18 @@
 //! This module controls the RCC (Reset and Clock Controller), it handles enabling and disabling
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 
-use super::{Peripheral, Register};
+use super::{Control, Register, Field};
 use arm::dmb;
 use volatile::Volatile;
+pub use self::clock_control::Clock as Clock;
+pub use self::enable::Peripheral as Peripheral;
 
 mod clock_control;
 mod config;
-
-mod clock_rate {
-  static mut clock_rate: u32 = 0;
-
-  pub fn get_system_clock_rate() -> u32 {
-    unsafe { 
-      clock_rate 
-    }
-  }
-
-  pub fn update_system_clock_rate() {
-    const HSI_VALUE: u32 = 8_000_000;
-    const HSE_VALUE: u32 = 8_000_000;
-    const HSI48_VALUE: u32 = 48_000_000;
-    use super::Clock;
-    use super::super::systick;
-
-    let rcc = super::rcc();
-    let rate = match rcc.get_system_clock_source() {
-      Clock::HSI => HSI_VALUE,
-      Clock::HSE => HSE_VALUE,
-      Clock::HSI48 => HSI48_VALUE,
-      Clock::PLL => {
-        let multiplier = rcc.get_pll_multiplier() as u32;
-        let source = rcc.get_pll_source();
-        let prediv_factor = rcc.get_pll_prediv_factor() as u32;
-
-        match source {
-          Clock::HSE => (HSE_VALUE/prediv_factor) * multiplier,
-          Clock::HSI48 => (HSI48_VALUE/prediv_factor) * multiplier,
-          Clock::HSI => (HSI_VALUE/2) * multiplier,
-          _ => panic!("CRR::update_system_core_clock - invalid clock driving the PLL!"),
-        }
-      },
-      _ => panic!("CRR::update_system_core_clock - invalid clock for the system clock!"),
-    };
-
-    unsafe { clock_rate = rate; }
-    let systick = systick::systick();
-    // Interrupt every milisecond
-    systick.set_reload_value(rate / 1000);
-  }
-
-}
+mod enable;
 
 pub fn rcc() -> RCC {
   RCC::rcc()
-}
-
-pub enum Clock {
-  HSI,
-  HSI48,
-  HSI14,
-  HSE,
-  PLL,
 }
 
 /// Reset and Clock Controller
@@ -70,9 +21,10 @@ pub struct RCC {
   mem_addr: u32,
   cr: clock_control::ClockControl,
   cfgr: config::ConfigControl,
+  enr: enable::PeripheralControl,
 }
 
-impl Peripheral for RCC {
+impl Control for RCC {
   unsafe fn mem_addr(&self) -> Volatile<u32> {
     Volatile::new(self.mem_addr as *const u32)
   }
@@ -85,6 +37,7 @@ impl RCC {
       mem_addr: RCC_ADDR,
       cr: clock_control::ClockControl::new(RCC_ADDR),
       cfgr: config::ConfigControl::new(RCC_ADDR),
+      enr: enable::PeripheralControl::new(RCC_ADDR),
     }
   }
 
@@ -122,7 +75,7 @@ impl RCC {
     // If we access the register too fast the old value could still be in the cache un-updated, 
     // and we could get the wrong system clock when we calculate the clock rate.
     unsafe { dmb(); }
-    clock_rate::update_system_clock_rate();
+    clock_control::clock_rate::update_system_clock_rate();
   }
 
   /// Get the clock driving the PLL
@@ -160,7 +113,20 @@ impl RCC {
   }
 
   pub fn get_system_clock_rate(&self) -> u32 {
-    clock_rate::get_system_clock_rate()
+    clock_control::clock_rate::get_system_clock_rate()
+  }
+
+  /// Enable a peripheral
+  pub fn enable_peripheral(&self, peripheral: Peripheral) {
+    self.enr.enable_peripheral(peripheral);
+  }
+
+  pub fn disable_peripheral(&self, peripheral: Peripheral) {
+    self.enr.disable_peripheral(peripheral);
+  }
+
+  pub fn peripheral_is_enabled(&self, peripheral: Peripheral) -> bool {
+    self.enr.peripheral_is_enabled(peripheral)
   }
 }
 

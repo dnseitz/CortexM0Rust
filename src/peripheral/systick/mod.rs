@@ -1,5 +1,5 @@
 
-use super::{Peripheral, Register};
+use super::{Control, Register};
 use volatile::Volatile;
 
 mod control_status;
@@ -18,7 +18,7 @@ pub struct SysTick {
   cvr: current_value::CVR,
 }
 
-impl Peripheral for SysTick {
+impl Control for SysTick {
   unsafe fn mem_addr(&self) -> Volatile<u32> {
     Volatile::new(self.mem_addr as *const u32)
   }

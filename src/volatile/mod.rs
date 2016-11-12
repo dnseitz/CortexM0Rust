@@ -59,16 +59,12 @@ impl<T: Copy> RawVolatile<T> {
     RawVolatile(ptr)
   }
 
-  pub fn store(&mut self, rhs: T) {
-    unsafe {
-      volatile_store(self.0 as *mut T, rhs);
-    }
+  pub unsafe fn store(&mut self, rhs: T) {
+    volatile_store(self.0 as *mut T, rhs);
   }
 
-  pub fn load(&self) -> T {
-    unsafe {
-      volatile_load(self.0 as *const T)
-    }
+  pub unsafe fn load(&self) -> T {
+    volatile_load(self.0 as *const T)
   }
 }
 

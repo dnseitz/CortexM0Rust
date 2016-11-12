@@ -22,21 +22,14 @@ pub use exceptions::EXCEPTIONS;
 
 #[no_mangle]
 pub fn start() -> ! {
-  gpio::GPIO::enable(gpio::GPIOGroup::B);
+  gpio::GPIO::enable(gpio::Group::B);
 
-  let mut pb3 = gpio::GPIOPort::new(3, gpio::GPIOGroup::B);
-  pb3.set_mode(gpio::GPIOMode::Output);
-  pb3.set_type(gpio::GPIOType::PushPull);
-
-  // Just looking...
-  //let pb3_mode = pb3.get_mode();
-  //let pb3_type = pb3.get_type();
+  let mut pb3 = gpio::Port::new(3, gpio::Group::B);
+  pb3.set_mode(gpio::Mode::Output);
+  pb3.set_type(gpio::Type::PushPull);
 
   let rcc = rcc::rcc();
   let systick = systick::systick();
-
-  // Check system clock source...
-  //let clock_source: rcc::Clock = rcc.get_system_clock_source();
   
   // 12 is the max we can go since our input clock is (8MHz / 2)
   let mut clock_multiplier: u8 = 12;
@@ -53,9 +46,6 @@ pub fn start() -> ! {
   // Enable the PLL clock
   rcc.enable_clock(rcc::Clock::PLL);
 
-  // Just checking that it's on...
-  //let pll_enabled = rcc.clock_is_on(rcc::Clock::PLL);
-
   // Wait for it to be ready
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
   // Switch over to the PLL for running the system
@@ -67,14 +57,6 @@ pub fn start() -> ! {
   systick.clear_current_value();
   systick.enable_counter();
   systick.enable_interrupts();
-
-  // Make sure the PLL is the new system source
-  //let new_clock_source: rcc::Clock = rcc.get_system_clock_source();
-
-  // This should be false since the PLL is running off of it...
-  //let did_disable_hsi = rcc.disable_clock(rcc::Clock::HSI);
-
-  //let clock_rate = rcc.get_system_clock_rate();
   
   let mut ms_delay: u32 = 500;
   loop {

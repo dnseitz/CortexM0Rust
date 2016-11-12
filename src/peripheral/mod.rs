@@ -7,7 +7,7 @@ pub mod systick;
 
 use volatile::Volatile;
 
-pub trait Peripheral {
+pub trait Control {
   unsafe fn mem_addr(&self) -> Volatile<u32>;
 }
 
@@ -19,4 +19,8 @@ pub trait Register {
   unsafe fn addr(&self) -> Volatile<u32> {
     Volatile::new((self.base_addr() + self.mem_offset()) as *const u32)
   }
+}
+
+pub trait Field {
+  fn mask(&self) -> u32;
 }
