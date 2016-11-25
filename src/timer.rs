@@ -1,5 +1,5 @@
 
-static mut time: Timer = Timer { sec: 0, msec: 0, };
+static mut time: Timer = Timer::new();
 
 use volatile::Volatile;
 
@@ -10,7 +10,7 @@ pub struct Timer {
 }
 
 impl Timer {
-  fn new() -> Self {
+  const fn new() -> Self {
     Timer {
       sec: 0,
       msec: 0,
