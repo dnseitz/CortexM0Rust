@@ -15,11 +15,11 @@ impl<T: Copy> Volatile<T> {
     Volatile(RawVolatile::new(ptr))
   }
 
-  fn as_ptr(self) -> *const T {
+  pub fn as_ptr(self) -> *const T {
     (self.0).0
   }
 
-  fn as_mut_ptr(self) -> *mut T {
+  pub fn as_mut(self) -> *mut T {
     (self.0).0 as *mut T
   }
 }
@@ -49,6 +49,20 @@ impl<T: Add<Output=T> + Copy> Add<T> for Volatile<T> where u32: Add<T, Output=u3
 impl<T: Add<Output=T> + Copy> AddAssign<T> for Volatile<T> where u32: Add<T, Output=u32> {
   fn add_assign(&mut self, rhs: T) {
     self.0 = RawVolatile(((self.0).0 as u32 + rhs) as *const T);
+  }
+}
+
+impl<T: Sub<Output=T> + Copy> Sub<T> for Volatile<T> where u32: Sub<T, Output=u32> { 
+  type Output = Volatile<T>;
+
+  fn sub(self, rhs: T) -> Self::Output {
+    Volatile(RawVolatile(((self.0).0 as u32 - rhs) as *const T))
+  }
+}
+
+impl<T: Sub<Output=T> + Copy> SubAssign<T> for Volatile<T> where u32: Sub<T, Output=u32> {
+  fn sub_assign(&mut self, rhs: T) {
+    self.0 = RawVolatile(((self.0).0 as u32 - rhs) as *const T);
   }
 }
 

@@ -24,6 +24,27 @@ fn add_volatile_ptr() {
 }
 
 #[test]
+fn sub_assign_volatile_ptr() {
+  unsafe {
+    let mut ptr = Volatile::new(100 as *const _);
+    ptr -= 50;
+
+    assert_eq!(ptr.as_ptr() as u32, 50);
+  }
+}
+
+#[test]
+fn sub_volatile_ptr() {
+  unsafe {
+    let ptr = Volatile::new(100 as *const _);
+    let ptr2 = ptr - 50;
+
+    assert_eq!(ptr.as_ptr() as u32, 100);
+    assert_eq!(ptr2.as_ptr() as u32, 50);
+  }
+}
+
+#[test]
 fn store_volatile() {
   let num = 0xFF00;
   unsafe {

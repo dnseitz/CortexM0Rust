@@ -42,6 +42,11 @@ SECTIONS
     _etext = .;
   } > FLASH
 
+  .ARM.extab :
+  {
+    *(.ARM.extab*)
+  } > FLASH
+
   /*
   .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > FLASH
   .ARM : {
