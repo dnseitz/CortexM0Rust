@@ -39,7 +39,7 @@ pub fn start() -> ! {
   let systick = systick::systick();
   
   // 12 is the max we can go since our input clock is (8MHz / 2)
-  let mut clock_multiplier: u8 = 12;
+  let clock_multiplier: u8 = 12;
 
   // PLL must be off in order to configure
   rcc.disable_clock(rcc::Clock::PLL);
@@ -57,8 +57,6 @@ pub fn start() -> ! {
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
   // Switch over to the PLL for running the system
   rcc.set_system_clock_source(rcc::Clock::PLL);
-
-  let clock_rate = rcc.get_system_clock_rate();
   
   systick.use_processor_clock();
   systick.clear_current_value();
@@ -73,7 +71,7 @@ pub fn start() -> ! {
 }
 
 fn test_task_1() {
-  let mut pb3 = gpio::Port::new(3, gpio::Group::B);
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     for _ in 0..5 {
       pb3.set();
@@ -86,7 +84,7 @@ fn test_task_1() {
 }
 
 fn test_task_2() {
-  let mut pb3 = gpio::Port::new(3, gpio::Group::B);
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     for _ in 0..3 {
       pb3.set();

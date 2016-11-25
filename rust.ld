@@ -1,11 +1,3 @@
-/*
-GROUP(
-  libc.a
-  libnosys.a
-  libgcc.a
-)
-*/
-
 MEMORY
 {
   RAM (xrw)     : ORIGIN = 0x20000000, LENGTH = 6K
@@ -42,21 +34,12 @@ SECTIONS
     _etext = .;
   } > FLASH
 
-  .ARM.extab :
+  .ARM.extab : /* debug info */
   {
     *(.ARM.extab*)
   } > FLASH
 
-  /*
-  .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) } > FLASH
-  .ARM : {
-    __exidx_start = .;
-    *(.ARM.exidx*)
-    __exidx_end = .;
-  } > FLASH
-  */
-
-  /* Used by startup to initialize data (not yet though) */
+  /* Used by startup to initialize data */
   _sidata = .;
 
   /* Initialized data section */

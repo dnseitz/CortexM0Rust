@@ -2,34 +2,9 @@
 use ::volatile::Volatile;
 use ::system_control;
 
-/*
-pub fn create_task(name: &'static str, priority: Priority, stack_size: u32) -> TaskHandle {
-  unimplemented!();
-}
-*/
-
 // TODO: In the future, allocate new tasks on the heap, this is just for testing
-
 static mut task_1: TaskControl = TaskControl::new(0x2000_1000, 512);
-/*
-                                TaskControl {
-                                  stack: 0x2000_1000 as *const u32,
-                                  stack_base: 0x2000_0E00 as *const u32,
-                                  stack_depth: 512,
-                                  priority: Priority::Critical,
-                                  name: "task_1",
-                                };
-                                */
 static mut task_2: TaskControl = TaskControl::new(0x2000_0800, 512); 
-/*
-                                TaskControl {
-                                  stack: 0x2000_0800 as *const u32,
-                                  stack_base: 0x2000_0600 as *const u32,
-                                  stack_depth: 512,
-                                  priority: Priority::Critical,
-                                  name: "task_2",
-                                };
-                                */
 
 #[no_mangle]
 pub static mut current_task: &'static TaskControl = unsafe { &task_1 };
