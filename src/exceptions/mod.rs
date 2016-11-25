@@ -35,45 +35,46 @@ pub fn systick_handler() {
 pub fn pend_sv_handler() {
   unsafe {
     asm!(
-      "mrs r0, psp
+      concat!(
+       "mrs r0, psp\n", /* move program stack pointer into r0 */
        
-       ldr r3, current_task_const
-       ldr r2, [r3]
+       "ldr r3, current_task_const\n", /* get the location of the current task struct */
+       "ldr r2, [r3]\n",
 
-       subs r0, r0, #32
-       str r0, [r2]
-       stmia r0!, {r4-r7}
-        mov r4, r8
-        mov r5, r9
-        mov r6, r10
-        mov r7, r11
-        stmia r0!, {r4-r7}
+       "subs r0, r0, #32\n", /* make space for the remaining low registers (r0-r3 saved
+                                automatically) */
+       "str r0, [r2]\n",     /* save new top of stack */
+       "stmia r0!, {r4-r7}\n", /* store the low registers */
+        "mov r4, r8\n", /* store the high registers */
+        "mov r5, r9\n",
+        "mov r6, r10\n",
+        "mov r7, r11\n",
+        "stmia r0!, {r4-r7}\n",
         
-       push {r3, r14}
-       cpsid i
-       bl switch_context
-       cpsie i
-       pop {r2, r3}
+       "push {r3, r14}\n", /* store pointer to current task and lr on main stack */
+       "cpsid i\n", /* disable interrupts for context switch */
+       "bl switch_context\n",
+       "cpsie i\n", /* re-enable interrupts */
+       "pop {r2, r3}\n", /* pointer to current task now in r2, lr goes in r3 */
 
-       ldr r1, [r2]
-       ldr r0, [r1]
-       adds r0, r0, #16
-       ldmia r0!, {r4-r7}
-        mov r8, r4
-        mov r9, r5
-        mov r10, r6
-        mov r11, r7
+       "ldr r1, [r2]\n",
+       "ldr r0, [r1]\n", /* get the task's top of stack in r0 */
+       "adds r0, r0, #16\n", /* move to the high registers first */
+       "ldmia r0!, {r4-r7}\n", /* pop the high registers */
+        "mov r8, r4\n",
+        "mov r9, r5\n",
+        "mov r10, r6\n",
+        "mov r11, r7\n",
 
-       msr psp, r0
+       "msr psp, r0\n", /* store the new top of stack into program stack pointer */
 
-       subs r0, r0, #32
-        ldmia r0!, {r4-r7}
+       "subs r0, r0, #32\n", /* go back for the low registers not automatically stored */
+        "ldmia r0!, {r4-r7}\n",
 
-       bx r3
+       "bx r3\n", /* return from context switch */
 
-        .align 4
-       current_task_const: .word current_task
-      "
+        ".align 4\n",
+       "current_task_const: .word current_task\n")
     );
   }
 }

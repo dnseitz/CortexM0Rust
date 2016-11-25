@@ -53,7 +53,7 @@ pub fn init(first: fn(), second: fn()) {
 
 #[repr(C)]
 pub struct TaskControl {
-  stack: *const u32,
+  stack: *const u32, /* stack pointer MUST be first field */
   stack_base: *const u32,
   stack_depth: u32,
   priority: Priority,
@@ -111,24 +111,30 @@ pub fn switch_context() {
 
 pub fn start_first_task() {
   unsafe {
-    asm!("ldr r2, current_task_const_2
-          ldr r3, [r2]
-          ldr r0, [r3]
-          adds r0, #32
-          msr psp, r0
-          movs r0, #3
-          msr CONTROL, r0
-          isb
-          pop {r0-r5}
-          mov lr, r5
-          pop {r3}
-          pop {r2}
-          cpsie i
-          bx r3
+    asm!(
+      concat!(
+          "ldr r2, current_task_const_2\n", /* get location of current_task */
+          "ldr r3, [r2]\n",
+          "ldr r0, [r3]\n",
 
-           .align 4
-          current_task_const_2: .word current_task
-        ");
+          "adds r0, #32\n", /* discard everything up to r0 */
+          "msr psp, r0\n", /* this is the new top of stack to use for the task */
+
+          "movs r0, #3\n", /* switch to the psp stack */
+          "msr CONTROL, r0\n", /* we're using psp instead of msp now */
+
+          "isb\n", /* instruction barrier */
+
+          "pop {r0-r5}\n", /* pop the registers that are saved automatically */
+          "mov lr, r5\n", /* lr is now in r5, so put it back where it belongs */
+          "pop {r3}\n", /* pop return address (old pc) into r3 */
+          "pop {r2}\n", /* pop and discard xPSR */
+          "cpsie i\n", /* first task has its context, so interrupts can be enabled */
+          "bx r3\n", /* start executing user code */
+
+           ".align 4\n",
+          "current_task_const_2: .word current_task\n")
+        );
   }
 }
 

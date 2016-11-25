@@ -68,25 +68,8 @@ pub fn start() -> ! {
   task::init(test_task_1, test_task_2);
 
   task::start_first_task();
-  
-  //task::yield_task();
 
   loop { unsafe { arm::bkpt() }; }
-
-  /*
-  let mut ms_delay: u32 = 500;
-  loop {
-    //let timer = timer::Timer::get_current();
-    pb3.set();
-    timer::Timer::delay_ms(ms_delay);
-    pb3.reset();
-    timer::Timer::delay_ms(ms_delay);
-    ms_delay += 50;
-    if ms_delay > 1000 {
-      ms_delay = 0;
-    }
-  }
-  */
 }
 
 fn test_task_1() {
@@ -129,22 +112,22 @@ mod vector_table {
 
 fn init_data_segment() {
   unsafe {
-    asm!("
-      ldr r1, =_sidata
-      ldr r2, =_sdata
-      ldr r3, =_edata
-    copy:
-      cmp r2, r3
-      bpl done
-      ldr r0, [r1]
-      adds r1, #4
-      str r0, [r2]
-      adds r2, #4
-      b copy
-    done:
-    "
+    asm!(
+      concat!(
+      "ldr r1, =_sidata\n", /* start of data in flash */
+      "ldr r2, =_sdata\n",  /* start of memory location in RAM */
+      "ldr r3, =_edata\n",  /* end of memory location in RAM */
+    "copy:\n",
+      "cmp r2, r3\n", /* check if we've reached the end of our segment */
+      "bpl done\n",
+      "ldr r0, [r1]\n", /* if not, keep copying */
+      "adds r1, #4\n",
+      "str r0, [r2]\n",
+      "adds r2, #4\n",
+      "b copy\n", /* repeat until done */
+    "done:\n")
     : /* no outputs */ 
     : /* no inputs */ 
-    : "r0", "r1", "r2", "r3");  
+    : "r0", "r1", "r2", "r3" /* clobbers */);  
   }
 }
