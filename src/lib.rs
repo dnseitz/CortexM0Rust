@@ -3,7 +3,11 @@
 #![feature(asm)]
 #![feature(naked_functions)]
 #![feature(const_fn)]
+#![feature(alloc)]
 #![no_std]
+
+extern crate bump_allocator;
+extern crate alloc;
 
 mod exceptions;
 mod peripheral;
@@ -31,6 +35,8 @@ pub fn start() -> ! {
   init_data_segment();
   init_bss_segment();
   gpio::GPIO::enable(gpio::Group::B);
+
+  let a_box = alloc::boxed::Box::new(42);
 
   let mut pb3 = gpio::Port::new(3, gpio::Group::B);
   pb3.set_mode(gpio::Mode::Output);

@@ -1,4 +1,11 @@
 [root]
+name = "bump_allocator"
+version = "0.1.0"
+
+[[package]]
 name = "altos_rust"
 version = "0.1.0"
+dependencies = [
+ "bump_allocator 0.1.0",
+]
 

@@ -6,8 +6,13 @@ authors = ["Daniel Seitz <dnseitz@gmail.com>"]
 [lib]
 crate-type = ["staticlib"]
 
+[dependencies.bump_allocator]
+path = "libs/heap/bump_allocator"
+
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[workspace]
