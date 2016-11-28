@@ -1,13 +1,21 @@
 
+mod list;
+mod queue;
+
 use ::volatile::Volatile;
 use ::system_control;
+use self::list::Queue;
+use self::queue::TaskQueue;
+use ::alloc::boxed::Box;
+use ::collections::Vec;
 
-// TODO: In the future, allocate new tasks on the heap, this is just for testing
-static mut task_1: TaskControl = TaskControl::new(0x2000_1000, 512);
-static mut task_2: TaskControl = TaskControl::new(0x2000_0800, 512); 
+static mut init_task: TaskControl = TaskControl::uninitialized("init");
 
 #[no_mangle]
-pub static mut current_task: &'static TaskControl = unsafe { &task_1 };
+pub static mut current_task: &'static TaskControl = unsafe { &init_task };
+
+// TODO: Wrap task_list in a mutex lock to provide safe access
+static mut task_list: TaskQueue = TaskQueue::new();
 
 /*
 struct TaskHandle<'task> {
@@ -15,41 +23,76 @@ struct TaskHandle<'task> {
 }
 */
 
+#[derive(Copy, Clone)]
 pub enum Priority {
   Critical,
+  Low,
 }
 
-pub fn init(first: fn(), second: fn()) {
+#[derive(Copy, Clone)]
+enum State {
+  Ready,
+  Running,
+  Blocked,
+  Suspended,
+  Embryo,
+}
+
+pub fn init() {
   unsafe {
-    task_1.initialize(first);
-    task_2.initialize(second);
+    let stack: ::collections::Vec<u8> = ::collections::Vec::with_capacity(64);
+    let mut task = TaskControl::new(stack.as_ptr() as u32, 256, "init");
+    task.initialize(initial_task, Priority::Low);
+    init_task = task;
   }
+}
+
+fn initial_task() {
+  loop {
+    yield_task();
+  }
+}
+
+pub fn new_task(code: fn(), stack_depth: u32, priority: Priority, name: &'static str) {
+  let stack: Vec<u8> = Vec::with_capacity(stack_depth as usize);
+  let mut task = Box::new(TaskControl::new(stack.as_ptr() as u32, stack_depth, name));
+  task.initialize(code, priority);
+
+  unsafe { task_list.enqueue(task); }
 }
 
 #[repr(C)]
 pub struct TaskControl {
-  stack: *const u32, /* stack pointer MUST be first field */
-  stack_base: *const u32,
+  stack: u32, /* stack pointer MUST be first field */
+  stack_base: u32,
   stack_depth: u32,
+  state: State,
   priority: Priority,
   name: &'static str,
+  next: *const TaskControl,
 }
 
 impl TaskControl {
-  const fn new(stack: u32, depth: u32) -> Self {
+  const fn new(stack: u32, depth: u32, name: &'static str) -> Self {
     TaskControl {
-      stack: stack as *const u32,
-      stack_base: (stack - depth) as *const u32,
+      stack: stack + depth,
+      stack_base: stack,
       stack_depth: depth,
+      state: State::Embryo,
       priority: Priority::Critical,
-      name: "test_task",
+      name: name,
+      next: ::core::ptr::null(),
     }
   }
 
-  fn initialize(&mut self, code: fn()) {
+  const fn uninitialized(name: &'static str) -> Self {
+    Self::new(0, 0, name)
+  }
+
+  fn initialize(&mut self, code: fn(), priority: Priority) {
     const INITIAL_XPSR: u32 = 0x0100_0000;
     unsafe {
-      let mut stack_mut = Volatile::new(self.stack);
+      let mut stack_mut = Volatile::new(self.stack as *const _);
       // Offset added to account for way MCU uses stack on entry/exit of interrupts
       stack_mut -= 4;
       stack_mut.store(INITIAL_XPSR); /* xPSR */
@@ -60,8 +103,10 @@ impl TaskControl {
       stack_mut -= 20; /* R12, R3, R2, R1 */
       // *stack_mut = params; /* R0 */
       stack_mut -= 32; /* R11..R4 */
-      self.stack = stack_mut.as_ptr();
+      self.stack = stack_mut.as_ptr() as u32;
     }
+    self.state = State::Ready;
+    self.priority = priority;
   }
 
   fn is_stack_overflowed(&self) -> bool {
@@ -72,14 +117,22 @@ impl TaskControl {
 #[no_mangle]
 pub fn switch_context() {
   unsafe {
-    if current_task.is_stack_overflowed() {
+    if (&*current_task).is_stack_overflowed() {
       ::arm::bkpt();
     }
-    if current_task as *const TaskControl == &task_1 as *const TaskControl {
-      current_task = &task_2;
-    }
-    else {
-      current_task = &task_1;
+    loop {
+      if let Some(new_task) = task_list.dequeue() {
+        // Box::from_raw(_) requires a *mut pointer, but since we want to keep our current_task
+        // reference immutable we must coerce it manually
+        task_list.enqueue(Box::from_raw(current_task as *const _ as *mut _)); 
+        current_task = new_task;
+        break;
+      }
+      else {
+        // Go to next priority queue
+        // If all queues are empty, reschedule current task
+        break;
+      }
     }
   }
 }

@@ -4,10 +4,14 @@
 #![feature(naked_functions)]
 #![feature(const_fn)]
 #![feature(alloc)]
+#![feature(collections)]
+#![feature(drop_types_in_const)] // Probably can come back and remove this later
 #![no_std]
 
 extern crate bump_allocator;
 extern crate alloc;
+#[macro_use]
+extern crate collections;
 
 mod exceptions;
 mod peripheral;
@@ -34,6 +38,7 @@ pub use task::{current_task, switch_context};
 pub fn start() -> ! {
   init_data_segment();
   init_bss_segment();
+  bump_allocator::init_heap();
   gpio::GPIO::enable(gpio::Group::B);
 
   let a_box = alloc::boxed::Box::new(42);
@@ -70,8 +75,10 @@ pub fn start() -> ! {
   systick.enable_counter();
   systick.enable_interrupts();
 
-  task::init(test_task_1, test_task_2);
-
+  task::init();
+  task::new_task(test_task_1, 1024, task::Priority::Critical, "first task");
+  task::new_task(test_task_2, 1024, task::Priority::Critical, "second task");
+  task::new_task(test_task_3, 1024, task::Priority::Critical, "third task");
   task::start_first_task();
 
   loop { unsafe { arm::bkpt() }; }
@@ -101,6 +108,20 @@ fn test_task_2() {
     }
     task::yield_task();
   }
+}
+
+fn test_task_3() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  loop {
+    for _ in 0..10 {
+      pb3.set();
+      timer::Timer::delay_ms(50);
+      pb3.reset();
+      timer::Timer::delay_ms(50);
+    }
+    task::yield_task();
+  }
+
 }
 
 mod vector_table {

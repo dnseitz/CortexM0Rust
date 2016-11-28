@@ -9,6 +9,7 @@ heap_size = 256;
 
 _stack_start = ORIGIN(RAM) + LENGTH(RAM);
 _stack_end = _stack_start - stack_size;
+_heap_end = _stack_end;
 
 ENTRY(start);
 
@@ -58,7 +59,7 @@ SECTIONS
   . = ALIGN(4);
   .bss :
   { 
-    /* Used by startup to initialize .bss section (not yet though) */
+    /* Used by startup to initialize .bss section */
     _sbss = .;
     __bss_start__ = _sbss;
     *(.bss)
@@ -74,8 +75,6 @@ SECTIONS
   .heap :
   {
     _heap_start = .;
-    . = . + heap_size;
-    _heap_end = .;
   } > RAM
 
   /DISCARD/ :
