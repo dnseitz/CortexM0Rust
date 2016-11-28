@@ -40,8 +40,7 @@ enum State {
 
 pub fn init() {
   unsafe {
-    let stack: ::collections::Vec<u8> = ::collections::Vec::with_capacity(64);
-    let mut task = TaskControl::new(stack.as_ptr() as u32, 256, "init");
+    let mut task = TaskControl::new(256, "init");
     task.initialize(initial_task, Priority::Low);
     init_task = task;
   }
@@ -54,8 +53,7 @@ fn initial_task() {
 }
 
 pub fn new_task(code: fn(), stack_depth: u32, priority: Priority, name: &'static str) {
-  let stack: Vec<u8> = Vec::with_capacity(stack_depth as usize);
-  let mut task = Box::new(TaskControl::new(stack.as_ptr() as u32, stack_depth, name));
+  let mut task = Box::new(TaskControl::new(stack_depth, name));
   task.initialize(code, priority);
 
   unsafe { task_list.enqueue(task); }
@@ -73,7 +71,11 @@ pub struct TaskControl {
 }
 
 impl TaskControl {
-  const fn new(stack: u32, depth: u32, name: &'static str) -> Self {
+  fn new(depth: u32, name: &'static str) -> Self {
+    let stack_mem: Vec<u8> = Vec::with_capacity(depth as usize);
+    let stack = stack_mem.as_ptr() as u32;
+    // Don't free the heap space
+    ::core::mem::forget(stack_mem);
     TaskControl {
       stack: stack + depth,
       stack_base: stack,
@@ -86,7 +88,15 @@ impl TaskControl {
   }
 
   const fn uninitialized(name: &'static str) -> Self {
-    Self::new(0, 0, name)
+    TaskControl {
+      stack: 0,
+      stack_base: 0,
+      stack_depth: 0,
+      state: State::Embryo,
+      priority: Priority::Low,
+      name: name,
+      next: ::core::ptr::null(),
+    }
   }
 
   fn initialize(&mut self, code: fn(), priority: Priority) {
