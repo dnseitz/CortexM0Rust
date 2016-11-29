@@ -148,7 +148,7 @@ pub fn start_first_task() {
           "adds r0, #32\n", /* discard everything up to r0 */
           "msr psp, r0\n", /* this is the new top of stack to use for the task */
 
-          "movs r0, #3\n", /* switch to the psp stack */
+          "movs r0, #2\n", /* switch to the psp stack */
           "msr CONTROL, r0\n", /* we're using psp instead of msp now */
 
           "isb\n", /* instruction barrier */
