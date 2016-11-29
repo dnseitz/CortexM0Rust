@@ -1,18 +1,16 @@
 
 mod list;
-mod queue;
 
 use ::volatile::Volatile;
 use ::system_control;
-use self::list::Queue;
-use self::queue::TaskQueue;
+use self::list::TaskQueue;
 use ::alloc::boxed::Box;
 use ::collections::Vec;
 
 static mut init_task: TaskControl = TaskControl::uninitialized("init");
 
 #[no_mangle]
-pub static mut current_task: &'static TaskControl = unsafe { &init_task };
+pub static mut current_task: Option<Box<TaskControl>> = None;
 
 // TODO: Wrap task_list in a mutex lock to provide safe access
 static mut task_list: TaskQueue = TaskQueue::new();
@@ -38,20 +36,6 @@ enum State {
   Embryo,
 }
 
-pub fn init() {
-  unsafe {
-    let mut task = TaskControl::new(256, "init");
-    task.initialize(initial_task, Priority::Low);
-    init_task = task;
-  }
-}
-
-fn initial_task() {
-  loop {
-    yield_task();
-  }
-}
-
 pub fn new_task(code: fn(), stack_depth: u32, priority: Priority, name: &'static str) {
   let mut task = Box::new(TaskControl::new(stack_depth, name));
   task.initialize(code, priority);
@@ -67,7 +51,7 @@ pub struct TaskControl {
   state: State,
   priority: Priority,
   name: &'static str,
-  next: *const TaskControl,
+  next: Option<Box<TaskControl>>,
 }
 
 impl TaskControl {
@@ -83,7 +67,7 @@ impl TaskControl {
       state: State::Embryo,
       priority: Priority::Critical,
       name: name,
-      next: ::core::ptr::null(),
+      next: None,
     }
   }
 
@@ -95,7 +79,7 @@ impl TaskControl {
       state: State::Embryo,
       priority: Priority::Low,
       name: name,
-      next: ::core::ptr::null(),
+      next: None,
     }
   }
 
@@ -124,31 +108,37 @@ impl TaskControl {
   }
 }
 
+/// Select a new task to run and switch its context, this function MUST only be called from the
+/// PendSV handler, calling it from elsewhere could lead to undefined behavior. It must be exposed
+/// publicly so that the compiler doesn't optimize it away when compiling for release.
 #[no_mangle]
-pub fn switch_context() {
-  unsafe {
-    if (&*current_task).is_stack_overflowed() {
-      ::arm::bkpt();
-    }
-    loop {
-      if let Some(new_task) = task_list.dequeue() {
-        // Box::from_raw(_) requires a *mut pointer, but since we want to keep our current_task
-        // reference immutable we must coerce it manually
-        task_list.enqueue(Box::from_raw(current_task as *const _ as *mut _)); 
-        current_task = new_task;
-        break;
+pub unsafe fn switch_context() {
+  match current_task.take() {
+    Some(running) => {
+      if running.is_stack_overflowed() {
+        ::arm::bkpt();
       }
-      else {
-        // Go to next priority queue
-        // If all queues are empty, reschedule current task
-        break;
+      loop {
+        if let Some(new_task) = task_list.dequeue() {
+          task_list.enqueue(running);
+          current_task = Some(new_task);
+          break;
+        }
+        else {
+          // Go to next priority queue
+          // If all queues are empty, reschedule current task
+          current_task = Some(running);
+          break;
+        }
       }
-    }
+    },
+    None => panic!("switch_context - current task doesn't exist!"),
   }
 }
 
 pub fn start_first_task() {
   unsafe {
+    current_task = task_list.dequeue();
     asm!(
       concat!(
           "ldr r2, current_task_const_2\n", /* get location of current_task */

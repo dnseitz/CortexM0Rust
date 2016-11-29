@@ -75,7 +75,6 @@ pub fn start() -> ! {
   systick.enable_counter();
   systick.enable_interrupts();
 
-  task::init();
   task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
   task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
