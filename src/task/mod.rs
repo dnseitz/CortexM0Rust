@@ -162,7 +162,10 @@ pub fn start_first_task() {
 
            ".align 4\n",
           "current_task_const_2: .word current_task\n")
-        );
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 }
 

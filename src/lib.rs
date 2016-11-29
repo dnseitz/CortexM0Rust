@@ -139,21 +139,22 @@ fn init_data_segment() {
   unsafe {
     asm!(
       concat!(
-      "ldr r1, =_sidata\n", /* start of data in flash */
-      "ldr r2, =_sdata\n",  /* start of memory location in RAM */
-      "ldr r3, =_edata\n",  /* end of memory location in RAM */
-    "copy:\n",
-      "cmp r2, r3\n", /* check if we've reached the end of our segment */
-      "bpl d_done\n",
-      "ldr r0, [r1]\n", /* if not, keep copying */
-      "adds r1, #4\n",
-      "str r0, [r2]\n",
-      "adds r2, #4\n",
-      "b copy\n", /* repeat until done */
-    "d_done:\n")
+        "ldr r1, =_sidata\n", /* start of data in flash */
+        "ldr r2, =_sdata\n",  /* start of memory location in RAM */
+        "ldr r3, =_edata\n",  /* end of memory location in RAM */
+      "copy:\n",
+        "cmp r2, r3\n", /* check if we've reached the end of our segment */
+        "bpl d_done\n",
+        "ldr r0, [r1]\n", /* if not, keep copying */
+        "adds r1, #4\n",
+        "str r0, [r2]\n",
+        "adds r2, #4\n",
+        "b copy\n", /* repeat until done */
+      "d_done:\n")
     : /* no outputs */ 
     : /* no inputs */ 
-    : "r0", "r1", "r2", "r3" /* clobbers */);  
+    : "r0", "r1", "r2", "r3" /* clobbers */
+    : "volatile");  
   }
 }
 
@@ -161,18 +162,19 @@ fn init_bss_segment() {
   unsafe {
     asm!(
       concat!(
-      "movs r0, #0\n",
-      "ldr r1, =_sbss\n",
-      "ldr r2, =_ebss\n",
-    "loop:\n",
-      "cmp r1, r2\n",
-      "bpl b_done\n",
-      "str r0, [r1]\n",
-      "adds r1, #4\n",
-      "b loop\n",
-    "b_done:\n")
+        "movs r0, #0\n", /* store zero for later */
+        "ldr r1, =_sbss\n", /* start of bss in RAM */
+        "ldr r2, =_ebss\n", /* end of bss in RAM */
+      "loop:\n",
+        "cmp r1, r2\n", /* check if we've reached the end of our segment */
+        "bpl b_done\n",
+        "str r0, [r1]\n", /* if not, zero out memory at current location */
+        "adds r1, #4\n",
+        "b loop\n", /* repeat until done */
+      "b_done:\n")
     : /* no outputs */
     : /* no inputs */
-    : "r0", "r1", "r2" /* clobbers */);
+    : "r0", "r1", "r2" /* clobbers */
+    : "volatile");
   }
 }
