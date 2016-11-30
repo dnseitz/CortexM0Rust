@@ -1,5 +1,5 @@
 
-static mut time: Timer = Timer::new();
+static mut TIME: Timer = Timer::new();
 
 use volatile::Volatile;
 
@@ -20,31 +20,29 @@ impl Timer {
   /// Tick by 1 ms
   pub fn tick() {
     unsafe {
-      time.msec += 1;
-      if time.msec % 1000 == 0 {
-        time.sec += 1;
+      TIME.msec += 1;
+      if TIME.msec % 1000 == 0 {
+        TIME.sec += 1;
       }
     }
   }
 
   pub fn get_current() -> Timer {
-    unsafe { time }
+    unsafe { TIME }
   }
 
   pub fn delay_ms(ms: u32) {
     unsafe {
-      let v_msec = Volatile::new(&time.msec);
+      let v_msec = Volatile::new(&TIME.msec);
       let start: u32 = v_msec.load();
-      //while volatile_load(&time.msec as *const u32) - start < ms {/* spin */}
       while *v_msec - start < ms {/* spin */}
     }
   }
 
   pub fn delay_s(s: u32) {
     unsafe {
-      let v_sec = Volatile::new(&time.sec);
+      let v_sec = Volatile::new(&TIME.sec);
       let start: u32 = v_sec.load();
-      //while volatile_load(&time.sec as *const u32) - start < s {/* spin */}
       while *v_sec - start < s {/* spin */}
     }
   }

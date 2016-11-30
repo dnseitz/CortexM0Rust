@@ -90,7 +90,7 @@ fn pend_sv_handler() {
         "bx r3\n", /* return from context switch */
 
          ".align 4\n",
-        "current_task_const: .word current_task\n",
+        "current_task_const: .word CURRENT_TASK\n",
         "ics_reg: .word 0xe000ed04\n")
     : /* no outputs */
     : /* no inputs */

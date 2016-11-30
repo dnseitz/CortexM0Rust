@@ -1,7 +1,7 @@
 //! This module controls the RCC (Reset and Clock Controller), it handles enabling and disabling
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 
-use super::{Control, Register, Field};
+use super::Control;
 use arm::dmb;
 use volatile::Volatile;
 pub use self::clock_control::Clock as Clock;

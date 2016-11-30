@@ -8,10 +8,10 @@ use ::alloc::boxed::Box;
 use ::collections::Vec;
 
 #[no_mangle]
-pub static mut current_task: Option<Box<TaskControl>> = None;
+pub static mut CURRENT_TASK: Option<Box<TaskControl>> = None;
 
 // TODO: Wrap task_list in a mutex lock to provide safe access
-static mut task_list: TaskQueue = TaskQueue::new();
+static mut TASK_LIST: TaskQueue = TaskQueue::new();
 
 /*
 struct TaskHandle<'task> {
@@ -38,7 +38,7 @@ pub fn new_task(code: fn(), stack_depth: u32, priority: Priority, name: &'static
   let mut task = Box::new(TaskControl::new(stack_depth, name));
   task.initialize(code, priority);
 
-  unsafe { task_list.enqueue(task); }
+  unsafe { TASK_LIST.enqueue(task); }
 }
 
 #[repr(C)]
@@ -111,21 +111,21 @@ impl TaskControl {
 /// publicly so that the compiler doesn't optimize it away when compiling for release.
 #[no_mangle]
 pub unsafe fn switch_context() {
-  match current_task.take() {
+  match CURRENT_TASK.take() {
     Some(running) => {
       if running.is_stack_overflowed() {
         ::arm::bkpt();
       }
       loop {
-        if let Some(new_task) = task_list.dequeue() {
-          task_list.enqueue(running);
-          current_task = Some(new_task);
+        if let Some(new_task) = TASK_LIST.dequeue() {
+          TASK_LIST.enqueue(running);
+          CURRENT_TASK = Some(new_task);
           break;
         }
         else {
           // Go to next priority queue
           // If all queues are empty, reschedule current task
-          current_task = Some(running);
+          CURRENT_TASK = Some(running);
           break;
         }
       }
@@ -136,7 +136,7 @@ pub unsafe fn switch_context() {
 
 pub fn start_first_task() {
   unsafe {
-    current_task = task_list.dequeue();
+    CURRENT_TASK = TASK_LIST.dequeue();
     asm!(
       concat!(
           "ldr r2, current_task_const_2\n", /* get location of current_task */
@@ -159,7 +159,7 @@ pub fn start_first_task() {
           "bx r3\n", /* start executing user code */
 
            ".align 4\n",
-          "current_task_const_2: .word current_task\n")
+          "current_task_const_2: .word CURRENT_TASK\n")
       : /* no outputs */
       : /* no inputs */
       : /* no clobbers */

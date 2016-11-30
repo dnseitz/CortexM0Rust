@@ -78,7 +78,7 @@ struct IPR {
 }
 
 impl Register for IPR {
-  fn new(base_addr: u32) -> Self {
+  fn new(_base_addr: u32) -> Self {
     unimplemented!();
   }
 

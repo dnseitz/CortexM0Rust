@@ -28,12 +28,12 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 
-pub use math::{__aeabi_uidiv, __aeabi_uidivmod};
+pub use math::{__aeabi_uidiv, __aeabi_uidivmod, __aeabi_lmul};
 #[cfg(not(test))]
 pub use vector_table::RESET;
 #[cfg(not(test))]
 pub use exceptions::EXCEPTIONS;
-pub use task::{current_task, switch_context};
+pub use task::{CURRENT_TASK, switch_context};
 
 #[no_mangle]
 pub fn start() -> ! {

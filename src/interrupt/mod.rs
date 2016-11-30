@@ -1,5 +1,5 @@
 
-use peripheral::{Control, Register};
+use peripheral::Control;
 use volatile::Volatile;
 
 mod enable;

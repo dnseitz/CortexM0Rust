@@ -3,11 +3,11 @@
 use super::super::Register;
 
 pub mod clock_rate {
-  static mut clock_rate: u32 = 0;
+  static mut CLOCK_RATE: u32 = 0;
 
   pub fn get_system_clock_rate() -> u32 {
     unsafe { 
-      clock_rate 
+      CLOCK_RATE 
     }
   }
 
@@ -38,7 +38,7 @@ pub mod clock_rate {
       _ => panic!("CRR::update_system_core_clock - invalid clock for the system clock!"),
     };
 
-    unsafe { clock_rate = rate; }
+    unsafe { CLOCK_RATE = rate; }
     let systick = systick::systick();
     // Interrupt every milisecond
     systick.set_reload_value(rate / 1000);
