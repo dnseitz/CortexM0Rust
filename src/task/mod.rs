@@ -7,8 +7,6 @@ use self::list::TaskQueue;
 use ::alloc::boxed::Box;
 use ::collections::Vec;
 
-static mut init_task: TaskControl = TaskControl::uninitialized("init");
-
 #[no_mangle]
 pub static mut current_task: Option<Box<TaskControl>> = None;
 

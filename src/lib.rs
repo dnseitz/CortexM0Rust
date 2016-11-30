@@ -22,6 +22,7 @@ mod arm;
 mod interrupt;
 mod task;
 mod system_control;
+mod atomic;
 
 use peripheral::gpio;
 use peripheral::rcc;
@@ -36,45 +37,13 @@ pub use task::{current_task, switch_context};
 
 #[no_mangle]
 pub fn start() -> ! {
-  // TODO: set pendsv interrupts to lowest priority
+  // TODO: set pendsv and systick interrupts to lowest priority
   init_data_segment();
   init_bss_segment();
   bump_allocator::init_heap();
-  gpio::GPIO::enable(gpio::Group::B);
-
-  let a_box = alloc::boxed::Box::new(42);
-
-  let mut pb3 = gpio::Port::new(3, gpio::Group::B);
-  pb3.set_mode(gpio::Mode::Output);
-  pb3.set_type(gpio::Type::PushPull);
-
-  let rcc = rcc::rcc();
-  let systick = systick::systick();
-  
-  // 12 is the max we can go since our input clock is (8MHz / 2)
-  let clock_multiplier: u8 = 12;
-
-  // PLL must be off in order to configure
-  rcc.disable_clock(rcc::Clock::PLL);
-
-  // Make sure HSI is the PLL source clock
-  rcc.set_pll_source(rcc::Clock::HSI);
-
-  // Set the multiplier... DO NOT EXCEED 48 MHz
-  rcc.set_pll_multiplier(clock_multiplier);
-
-  // Enable the PLL clock
-  rcc.enable_clock(rcc::Clock::PLL);
-
-  // Wait for it to be ready
-  while !rcc.clock_is_ready(rcc::Clock::PLL) {}
-  // Switch over to the PLL for running the system
-  rcc.set_system_clock_source(rcc::Clock::PLL);
-  
-  systick.use_processor_clock();
-  systick.clear_current_value();
-  systick.enable_counter();
-  systick.enable_interrupts();
+  init_led();
+  init_clock();
+  init_ticks();
 
   task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
@@ -178,4 +147,46 @@ fn init_bss_segment() {
     : "r0", "r1", "r2" /* clobbers */
     : "volatile");
   }
+}
+
+fn init_led() {
+  gpio::GPIO::enable(gpio::Group::B);
+
+  let mut pb3 = gpio::Port::new(3, gpio::Group::B);
+  pb3.set_mode(gpio::Mode::Output);
+  pb3.set_type(gpio::Type::PushPull);
+}
+
+fn init_clock() {
+  let rcc = rcc::rcc();
+
+  // 12 is the max we can go since our input clock is (8MHz / 2)
+  let clock_multiplier: u8 = 12;
+
+  // PLL must be off in order to configure
+  rcc.disable_clock(rcc::Clock::PLL);
+
+  // Make sure HSI is the PLL source clock
+  rcc.set_pll_source(rcc::Clock::HSI);
+
+  // Set the multiplier... DO NOT EXCEED 48 MHz
+  rcc.set_pll_multiplier(clock_multiplier);
+
+  // Enable the PLL clock
+  rcc.enable_clock(rcc::Clock::PLL);
+
+  // Wait for it to be ready
+  while !rcc.clock_is_ready(rcc::Clock::PLL) {}
+  // Switch over to the PLL for running the system
+  rcc.set_system_clock_source(rcc::Clock::PLL);
+}
+
+fn init_ticks() {
+  let systick = systick::systick();
+
+  systick.use_processor_clock();
+  systick.clear_current_value();
+  systick.enable_counter();
+  systick.enable_interrupts();
+
 }
