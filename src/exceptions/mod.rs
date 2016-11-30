@@ -22,20 +22,37 @@ pub static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
                                               
 
 
-pub fn default_handler() {
+fn default_handler() {
     unsafe { bkpt(); }
 }
 
-pub fn systick_handler() {
+fn systick_handler() {
   timer::Timer::tick();
 }
 
 /// Tell OS to context switch tasks
 #[naked]
-pub fn pend_sv_handler() {
+fn pend_sv_handler() {
   unsafe {
     asm!(
       concat!(
+        "cpsid i\n", /* disable interrupts for context switch */
+
+        /* Normally, PendSV gets cleared when the interrupt starts, BUT, there is a very small
+         * chance that if another interrupt arrives as the hardware is saving the context of the
+         * scratch registers we could go to that interrupt instead (look up 'late arriving' with
+         * regards to interrupt optimizations). If this happens and that interrupt happens to set
+         * the PendSV interrupt pending then on exit we will come back to this handler with the
+         * PendSV bit set. It will not get cleared automatically for us, so on exit of this handler
+         * we will re-enter this handler. This will cause an extra context switch, which may not be
+         * an issue, but if a critical task should run it will miss its timeslice. It's best just
+         * to be safe and clear it manually, even at the extra overhead that it brings to context
+         * switching */
+        "movs r0, #1\n",
+        "lsls r0, r0, #27\n", /* set the bit-mask */
+        "ldr r1, ics_reg\n", /* get the address of the interrupt control status register */
+        "str r0, [r1]\n", /* clear the PendSV bit */
+
         "mrs r0, psp\n", /* move program stack pointer into r0 */
        
         "ldr r3, current_task_const\n", /* get the location of the current task struct */
@@ -52,9 +69,7 @@ pub fn pend_sv_handler() {
          "stmia r0!, {r4-r7}\n",
         
         "push {r3, r14}\n", /* store pointer to current task and lr on main stack */
-        "cpsid i\n", /* disable interrupts for context switch */
         "bl switch_context\n",
-        "cpsie i\n", /* re-enable interrupts */
         "pop {r2, r3}\n", /* pointer to current task now in r2, lr goes in r3 */
 
         "ldr r1, [r2]\n",
@@ -71,10 +86,12 @@ pub fn pend_sv_handler() {
         "subs r0, r0, #32\n", /* go back for the low registers not automatically stored */
          "ldmia r0!, {r4-r7}\n",
 
+        "cpsie i\n", /* re-enable interrupts */
         "bx r3\n", /* return from context switch */
 
          ".align 4\n",
-        "current_task_const: .word current_task\n")
+        "current_task_const: .word current_task\n",
+        "ics_reg: .word 0xe000ed04\n")
     : /* no outputs */
     : /* no inputs */
     : /* no clobbers */

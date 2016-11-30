@@ -36,6 +36,7 @@ pub use task::{current_task, switch_context};
 
 #[no_mangle]
 pub fn start() -> ! {
+  // TODO: set pendsv interrupts to lowest priority
   init_data_segment();
   init_bss_segment();
   bump_allocator::init_heap();
