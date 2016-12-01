@@ -28,8 +28,6 @@ SECTIONS
     *(.text*)
     *(.rodata)
     *(.rodata*)
-    *(.glue_6)      /* Glue arm to thumb code */
-    *(.glue_6t)     /* Glue thumb to arm code */
     . = ALIGN(4);
     _etext = .;
   } > FLASH

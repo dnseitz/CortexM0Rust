@@ -8,6 +8,7 @@
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
 #![no_std]
 
+#[cfg(not(test))]
 extern crate bump_allocator;
 extern crate alloc;
 #[macro_use]
@@ -40,7 +41,10 @@ pub fn start() -> ! {
   // TODO: set pendsv and systick interrupts to lowest priority
   init_data_segment();
   init_bss_segment();
+
+  #[cfg(not(test))]
   bump_allocator::init_heap();
+
   init_led();
   init_clock();
   init_ticks();
@@ -107,6 +111,7 @@ mod vector_table {
 
 fn init_data_segment() {
   unsafe {
+    #[cfg(target_arch="arm")]
     asm!(
       concat!(
         "ldr r1, =_sidata\n", /* start of data in flash */
@@ -130,6 +135,7 @@ fn init_data_segment() {
 
 fn init_bss_segment() {
   unsafe {
+    #[cfg(target_arch="arm")]
     asm!(
       concat!(
         "movs r0, #0\n", /* store zero for later */

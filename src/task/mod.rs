@@ -137,6 +137,7 @@ pub unsafe fn switch_context() {
 pub fn start_first_task() {
   unsafe {
     CURRENT_TASK = TASK_LIST.dequeue();
+    #[cfg(target_arch="arm")]
     asm!(
       concat!(
           "ldr r2, current_task_const_2\n", /* get location of current_task */

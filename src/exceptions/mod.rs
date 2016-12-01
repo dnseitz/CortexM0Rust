@@ -1,9 +1,9 @@
-#![cfg(not(test))]
 
 use super::timer;
 use arm::bkpt;
 
 #[link_section = ".exceptions"]
+#[cfg(target_arch="arm")]
 #[no_mangle]
 pub static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI
                                               Some(default_handler),  // Hard Fault
@@ -30,10 +30,12 @@ fn systick_handler() {
   timer::Timer::tick();
 }
 
-/// Tell OS to context switch tasks
+/// Tell OS to context switch tasks, this should be set to the lowest priority so that all other
+/// interrupts are serviced first
 #[naked]
 fn pend_sv_handler() {
   unsafe {
+    #[cfg(target_arch="arm")]
     asm!(
       concat!(
         "cpsid i\n", /* disable interrupts for context switch */

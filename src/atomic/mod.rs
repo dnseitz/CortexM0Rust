@@ -5,6 +5,7 @@ use ::core::ops::{Add, Sub, BitAnd, BitOr, BitXor};
 macro_rules! start_critical {
   ($var:ident) => {{
     unsafe {
+      #![cfg(target_arch="arm")]
       asm!(
         concat!(
           "mrs $0, PRIMASK\n",
@@ -20,6 +21,7 @@ macro_rules! start_critical {
 macro_rules! end_critical {
   ($var:ident) => {{
     unsafe {
+      #![cfg(target_arch="arm")]
       asm!("msr PRIMASK, $0"
         : /* no outputs */
         : "r"($var)

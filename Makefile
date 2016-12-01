@@ -16,6 +16,7 @@ release_build = $(release_build_path)$(binary)
 ### CARGO ###
 cargo = xargo
 cargo_args = --target $(target)
+test_args = 
 
 ### LINKER ###
 linker = arm-none-eabi-ld
@@ -32,7 +33,6 @@ st_port = 4242
 ocd_port = 3333
 st_gdb_flags = $(gdb_flags) -eval-command="target remote :$(st_port)"
 ocd_gdb_flags = $(gdb_flags) -eval-command="target remote :$(ocd_port)"
-
 
 ### Make targets ###
 
@@ -64,7 +64,7 @@ gdb-ocd: debug
 	@$(gdb) $(ocd_gdb_flags) $(debug_build)
 
 test:
-	@$(cargo) test
+	@$(cargo) test $(test_args)
 
 size: debug
 

@@ -9,10 +9,10 @@ crate-type = ["staticlib"]
 [dependencies.bump_allocator]
 path = "libs/heap/bump_allocator"
 
-[dependencies.alloc]
+[target.'cfg(target_arch="arm")'.dependencies.alloc]
 path = "libs/alloc"
 
-[dependencies.collections]
+[target.'cfg(target_arch="arm")'.dependencies.collections]
 path = "libs/collections"
 
 [profile.dev]

@@ -6,10 +6,11 @@
 #![allocator]
 #![no_std]
 
-static mut bump_allocator: BumpAllocator = BumpAllocator::new();
+static mut BUMP_ALLOCATOR: BumpAllocator = BumpAllocator::new();
 
 /// Call this before doing any heap allocation
 pub fn init_heap() {
+  #[cfg(target_arch="arm")]
   unsafe {
     let heap_start: usize;
     let heap_size: usize;
@@ -23,7 +24,7 @@ pub fn init_heap() {
         : /* no inputs */
         : "r0", "r1", "r2"
     );
-    bump_allocator.init(heap_start, heap_size);
+    BUMP_ALLOCATOR.init(heap_start, heap_size);
   }
 }
 
@@ -88,7 +89,7 @@ pub fn align_up(addr: usize, align: usize) -> usize {
 #[no_mangle]
 pub extern fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
   unsafe {
-    bump_allocator.allocate(size, align).expect("out of memory")
+    BUMP_ALLOCATOR.allocate(size, align).expect("out of memory")
   }
 }
 
