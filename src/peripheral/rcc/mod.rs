@@ -1,3 +1,8 @@
+// peripheral/rcc/mod.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 //! This module controls the RCC (Reset and Clock Controller), it handles enabling and disabling
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 

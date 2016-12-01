@@ -1,3 +1,7 @@
+// system_control/mod.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
 
 use ::volatile::Volatile;
 use ::peripheral::{Control, Register};

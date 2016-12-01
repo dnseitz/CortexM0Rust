@@ -1,3 +1,7 @@
+// peripheral/gpio/mod.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
 
 use super::{Control, Register};
 use volatile::Volatile;

@@ -1,3 +1,8 @@
+// peripheral/rcc/enable.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 //! This module is used to control the AHBENR (AHB peripheral enable register) which controls the
 //! clock to the peripherals controled by the AHB clock.
 

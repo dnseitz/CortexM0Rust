@@ -1,3 +1,7 @@
+// timer.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
 
 static mut TIME: Timer = Timer::new();
 

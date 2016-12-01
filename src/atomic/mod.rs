@@ -1,3 +1,7 @@
+// atomic/mod.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
 
 use ::core::cell::UnsafeCell;
 use ::core::ops::{Add, Sub, BitAnd, BitOr, BitXor};

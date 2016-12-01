@@ -1,3 +1,8 @@
+// peripheral/rcc/config.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 //! This module handles the CFGR register which deals with clock configuration
 
 use super::super::Register;

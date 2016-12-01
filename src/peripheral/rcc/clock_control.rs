@@ -1,3 +1,8 @@
+// peripheral/rcc/clock_control.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 //! This module handles the clock control register of the CRR
 
 use super::super::Register;

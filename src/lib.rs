@@ -1,3 +1,8 @@
+// lib.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 #![feature(lang_items)]
 #![feature(core_intrinsics)]
 #![feature(asm)]

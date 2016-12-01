@@ -1,3 +1,7 @@
+// math.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
 
 #[no_mangle]
 pub unsafe extern fn __aeabi_lmul(num1: u64, num2: u64) -> u64 {

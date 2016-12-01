@@ -1,3 +1,8 @@
+// volatile/tests.rs
+// AltOSRust
+//
+// Created by Daniel Seitz on 11/30/16
+
 #![cfg(test)]
 
 use super::{Volatile, RawVolatile};
