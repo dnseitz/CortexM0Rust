@@ -116,7 +116,7 @@ mod vector_table {
 
 fn init_data_segment() {
   unsafe {
-    #[cfg(target_arch="arm")]
+    #![cfg(target_arch="arm")]
     asm!(
       concat!(
         "ldr r1, =_sidata\n", /* start of data in flash */
@@ -140,7 +140,7 @@ fn init_data_segment() {
 
 fn init_bss_segment() {
   unsafe {
-    #[cfg(target_arch="arm")]
+    #![cfg(target_arch="arm")]
     asm!(
       concat!(
         "movs r0, #0\n", /* store zero for later */
