@@ -8,7 +8,7 @@ fn add_assign_volatile_ptr() {
     let mut ptr = Volatile::new(100 as *const _);
     ptr += 100;
 
-    assert_eq!(ptr.as_ptr() as u32, 200);
+    assert_eq!(ptr.as_ptr() as usize, 200);
   }
 }
 
@@ -18,8 +18,8 @@ fn add_volatile_ptr() {
     let ptr = Volatile::new(100 as *const _);
     let ptr2 = ptr + 100;
 
-    assert_eq!(ptr.as_ptr() as u32, 100);
-    assert_eq!(ptr2.as_ptr() as u32, 200);
+    assert_eq!(ptr.as_ptr() as usize, 100);
+    assert_eq!(ptr2.as_ptr() as usize, 200);
   }
 }
 
@@ -29,7 +29,7 @@ fn sub_assign_volatile_ptr() {
     let mut ptr = Volatile::new(100 as *const _);
     ptr -= 50;
 
-    assert_eq!(ptr.as_ptr() as u32, 50);
+    assert_eq!(ptr.as_ptr() as usize, 50);
   }
 }
 
@@ -39,8 +39,8 @@ fn sub_volatile_ptr() {
     let ptr = Volatile::new(100 as *const _);
     let ptr2 = ptr - 50;
 
-    assert_eq!(ptr.as_ptr() as u32, 100);
-    assert_eq!(ptr2.as_ptr() as u32, 50);
+    assert_eq!(ptr.as_ptr() as usize, 100);
+    assert_eq!(ptr2.as_ptr() as usize, 50);
   }
 }
 

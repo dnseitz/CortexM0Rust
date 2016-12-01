@@ -10,12 +10,10 @@
 
 #[cfg(target_has_atomic = "ptr")]
 pub use self::imp::set_oom_handler;
-use core::intrinsics;
 
 fn default_oom_handler() -> ! {
-    // The default handler can't do much more since we can't assume the presence
-    // of libc or any way of printing an error message.
-    unsafe { intrinsics::abort() }
+    // Panic if we don't have any more heap memory
+    panic!("Out of heap memory!");
 }
 
 /// Common out-of-memory routine

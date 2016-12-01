@@ -38,31 +38,31 @@ impl<T: Copy> DerefMut for Volatile<T> {
   }
 }
 
-impl<T: Add<Output=T> + Copy> Add<T> for Volatile<T> where u32: Add<T, Output=u32> {
+impl<T: Add<Output=T> + Copy> Add<T> for Volatile<T> where usize: Add<T, Output=usize> {
   type Output = Volatile<T>;
 
   fn add(self, rhs: T) -> Self::Output {
-    Volatile(RawVolatile(((self.0).0 as u32 + rhs) as *const T))
+    Volatile(RawVolatile(((self.0).0 as usize + rhs) as *const T))
   }
 }
 
-impl<T: Add<Output=T> + Copy> AddAssign<T> for Volatile<T> where u32: Add<T, Output=u32> {
+impl<T: Add<Output=T> + Copy> AddAssign<T> for Volatile<T> where usize: Add<T, Output=usize> {
   fn add_assign(&mut self, rhs: T) {
-    self.0 = RawVolatile(((self.0).0 as u32 + rhs) as *const T);
+    self.0 = RawVolatile(((self.0).0 as usize + rhs) as *const T);
   }
 }
 
-impl<T: Sub<Output=T> + Copy> Sub<T> for Volatile<T> where u32: Sub<T, Output=u32> { 
+impl<T: Sub<Output=T> + Copy> Sub<T> for Volatile<T> where usize: Sub<T, Output=usize> { 
   type Output = Volatile<T>;
 
   fn sub(self, rhs: T) -> Self::Output {
-    Volatile(RawVolatile(((self.0).0 as u32 - rhs) as *const T))
+    Volatile(RawVolatile(((self.0).0 as usize - rhs) as *const T))
   }
 }
 
-impl<T: Sub<Output=T> + Copy> SubAssign<T> for Volatile<T> where u32: Sub<T, Output=u32> {
+impl<T: Sub<Output=T> + Copy> SubAssign<T> for Volatile<T> where usize: Sub<T, Output=usize> {
   fn sub_assign(&mut self, rhs: T) {
-    self.0 = RawVolatile(((self.0).0 as u32 - rhs) as *const T);
+    self.0 = RawVolatile(((self.0).0 as usize - rhs) as *const T);
   }
 }
 

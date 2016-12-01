@@ -185,3 +185,109 @@ impl<T: Copy + BitXor<Output=T>> Atomic<T> {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::Atomic;
+
+  #[test]
+  fn load() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.load(), 0);
+  }
+
+  #[test]
+  fn store() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    atom.store(1);
+    assert_eq!(atom.load(), 1);
+  }
+
+  #[test]
+  fn swap() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.swap(1), 0);
+    assert_eq!(atom.load(), 1);
+  }
+
+  #[test]
+  fn compare_and_swap() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.compare_and_swap(0, 1), 0);
+    assert_eq!(atom.load(), 1);
+
+  }
+
+  #[test]
+  fn compare_and_swap_fail() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.compare_and_swap(1, 2), 0);
+    assert_eq!(atom.load(), 0);
+  }
+
+  #[test]
+  fn compare_exchange() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.compare_exchange(0, 1), Ok(0));
+    assert_eq!(atom.load(), 1);
+  }
+
+  #[test]
+  fn compare_exchange_fail() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.compare_exchange(1, 2), Err(0));
+    assert_eq!(atom.load(), 0);
+  }
+
+  #[test]
+  fn fetch_add() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.fetch_add(1), 0);
+    assert_eq!(atom.fetch_add(1), 1);
+    assert_eq!(atom.load(), 2);
+  }
+
+  #[test]
+  fn fetch_sub() {
+    let atom: Atomic<usize> = Atomic::new(10);
+
+    assert_eq!(atom.fetch_sub(1), 10);
+    assert_eq!(atom.fetch_sub(4), 9);
+    assert_eq!(atom.load(), 5);
+  }
+
+  #[test]
+  fn fetch_and() {
+    let atom: Atomic<usize> = Atomic::new(0xFF);
+
+    assert_eq!(atom.fetch_and(0xAA), 0xFF);
+    assert_eq!(atom.fetch_and(0xF), 0xAA);
+    assert_eq!(atom.load(), 0xA);
+  }
+
+  #[test]
+  fn fetch_or() {
+    let atom: Atomic<usize> = Atomic::new(0);
+
+    assert_eq!(atom.fetch_or(0xAA), 0x0);
+    assert_eq!(atom.fetch_or(0x55), 0xAA);
+    assert_eq!(atom.load(), 0xFF);
+  }
+
+  #[test]
+  fn fetch_xor() {
+    let atom: Atomic<usize> = Atomic::new(0xAA);
+
+    assert_eq!(atom.fetch_xor(0xFF), 0xAA);
+    assert_eq!(atom.fetch_xor(0xFF), 0x55);
+    assert_eq!(atom.load(), 0xAA);
+  }
+}
