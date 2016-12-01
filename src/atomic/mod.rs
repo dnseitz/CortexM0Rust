@@ -192,6 +192,8 @@ impl<T: Copy + BitXor<Output=T>> Atomic<T> {
 
 #[cfg(test)]
 mod tests {
+  // As a side note, these operations are not actually atomic when compiled 
+  // for anything other than ARM
   use super::Atomic;
 
   #[test]
