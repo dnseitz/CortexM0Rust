@@ -9,11 +9,9 @@ crate-type = ["staticlib"]
 [dependencies.bump_allocator]
 path = "libs/heap/bump_allocator"
 
-[target.'cfg(target_arch="arm")'.dependencies.alloc]
-path = "libs/alloc"
-
-[target.'cfg(target_arch="arm")'.dependencies.collections]
-path = "libs/collections"
+[target.cortex-m0.dependencies]
+alloc = { path = "libs/alloc" }
+collections = { path = "libs/collections" }
 
 [profile.dev]
 panic = "abort"
