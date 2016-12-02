@@ -11,6 +11,7 @@ use self::list::{Queue, Queuable};
 use alloc::boxed::Box;
 use collections::Vec;
 use sync::Mutex;
+pub use self::imp::*;
 
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
@@ -43,18 +44,6 @@ enum State {
   Blocked,
   Suspended,
   Embryo,
-}
-
-/// Create a new task and put it into the task queue for running. The stack depth is how many bytes
-/// should be allocated for the stack, if there is not enough space to allocate the stack the
-/// kernel will panic with an out of memory (oom) error.
-pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
-  let mut task = Box::new(TaskControl::new(stack_depth, name));
-  task.initialize(code, priority);
-  let handle = TaskHandle::new(&*task);
-
-  unsafe { TASK_LIST.enqueue(task); }
-  handle
 }
 
 #[repr(C)]
@@ -181,75 +170,11 @@ pub unsafe fn switch_context() {
   }
 }
 
-/// Start running the first task in the queue
-pub fn start_first_task() {
-  unsafe {
-    CURRENT_TASK = TASK_LIST.dequeue();
-    if CURRENT_TASK.is_none() {
-      panic!("start_first_task - tried to start running tasks when no tasks have been created!");
-    }
-    #[cfg(target_arch="arm")]
-    asm!(
-      concat!(
-          "ldr r2, current_task_const_2\n", /* get location of current_task */
-          "ldr r3, [r2]\n",
-          "ldr r0, [r3]\n",
-
-          "adds r0, #32\n", /* discard everything up to r0 */
-          "msr psp, r0\n", /* this is the new top of stack to use for the task */
-
-          "movs r0, #2\n", /* switch to the psp stack */
-          "msr CONTROL, r0\n", /* we're using psp instead of msp now */
-
-          "isb\n", /* instruction barrier */
-
-          "pop {r0-r5}\n", /* pop the registers that are saved automatically */
-          "mov lr, r5\n", /* lr is now in r5, so put it back where it belongs */
-          "pop {r3}\n", /* pop return address (old pc) into r3 */
-          "pop {r2}\n", /* pop and discard xPSR */
-          "cpsie i\n", /* first task has its context, so interrupts can be enabled */
-          "bx r3\n", /* start executing user code */
-
-           ".align 4\n",
-          "current_task_const_2: .word CURRENT_TASK\n")
-      : /* no outputs */
-      : /* no inputs */
-      : /* no clobbers */
-      : "volatile");
-  }
-}
 
 fn exit_error() -> ! {
   unsafe {
     ::arm::bkpt();
     loop{}
-  }
-}
-
-/// Yield the current task to the scheduler so another task can run.
-pub fn yield_task() {
-  let scb = system_control::scb();
-  scb.set_pend_sv();
-}
-
-pub fn sleep(wchan: usize) {
-  unsafe {
-    if let Some(current) = CURRENT_TASK.as_mut() {
-      current.wchan = wchan;
-      current.state = State::Blocked;
-    }
-    else {
-      panic!("sleep_on - current task doesn't exist!");
-    }
-  }
-  yield_task();
-}
-
-pub fn wake(wchan: usize) {
-  unsafe {
-    let mut to_wake: Queue<TaskControl> = SLEEP_LIST.remove(|task| task.wchan == wchan);
-    to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; });
-    TASK_LIST.append(to_wake);
   }
 }
 
@@ -262,4 +187,89 @@ mod tid {
   pub fn fetch_next_tid() -> usize {
     CURRENT_TID.fetch_add(1)
   }
+}
+
+mod imp {
+  use super::{State, TaskControl, TaskHandle, TASK_LIST, SLEEP_LIST, CURRENT_TASK, Priority};
+  use system_control;
+  use alloc::boxed::Box;
+  use super::list::{Queue, Queuable};
+
+  /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
+  /// should be allocated for the stack, if there is not enough space to allocate the stack the
+  /// kernel will panic with an out of memory (oom) error.
+  pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
+    let mut task = Box::new(TaskControl::new(stack_depth, name));
+    task.initialize(code, priority);
+    let handle = TaskHandle::new(&*task);
+
+    unsafe { TASK_LIST.enqueue(task); }
+    handle
+  }
+
+  /// Yield the current task to the scheduler so another task can run.
+  pub fn yield_task() {
+    let scb = system_control::scb();
+    scb.set_pend_sv();
+  }
+
+  pub fn sleep(wchan: usize) {
+    unsafe {
+      if let Some(current) = CURRENT_TASK.as_mut() {
+        current.wchan = wchan;
+        current.state = State::Blocked;
+      }
+      else {
+        panic!("sleep_on - current task doesn't exist!");
+      }
+    }
+    yield_task();
+  }
+
+  pub fn wake(wchan: usize) {
+    unsafe {
+      let mut to_wake: Queue<TaskControl> = SLEEP_LIST.remove(|task| task.wchan == wchan);
+      to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; });
+      TASK_LIST.append(to_wake);
+    }
+  }
+
+  /// Start running the first task in the queue
+  pub fn start_first_task() {
+    unsafe {
+      CURRENT_TASK = TASK_LIST.dequeue();
+      if CURRENT_TASK.is_none() {
+        panic!("start_first_task - tried to start running tasks when no tasks have been created!");
+      }
+      #[cfg(target_arch="arm")]
+      asm!(
+        concat!(
+            "ldr r2, current_task_const_2\n", /* get location of current_task */
+            "ldr r3, [r2]\n",
+            "ldr r0, [r3]\n",
+
+            "adds r0, #32\n", /* discard everything up to r0 */
+            "msr psp, r0\n", /* this is the new top of stack to use for the task */
+
+            "movs r0, #2\n", /* switch to the psp stack */
+            "msr CONTROL, r0\n", /* we're using psp instead of msp now */
+
+            "isb\n", /* instruction barrier */
+
+            "pop {r0-r5}\n", /* pop the registers that are saved automatically */
+            "mov lr, r5\n", /* lr is now in r5, so put it back where it belongs */
+            "pop {r3}\n", /* pop return address (old pc) into r3 */
+            "pop {r2}\n", /* pop and discard xPSR */
+            "cpsie i\n", /* first task has its context, so interrupts can be enabled */
+            "bx r3\n", /* start executing user code */
+
+             ".align 4\n",
+            "current_task_const_2: .word CURRENT_TASK\n")
+        : /* no outputs */
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+    }
+  }
+
 }
