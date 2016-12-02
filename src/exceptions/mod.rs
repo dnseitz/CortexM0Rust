@@ -5,6 +5,7 @@
 
 use super::timer;
 use arm::bkpt;
+use task;
 
 #[link_section = ".exceptions"]
 #[cfg(target_arch="arm")]
@@ -32,6 +33,7 @@ fn default_handler() {
 
 fn systick_handler() {
   timer::Timer::tick();
+  task::alarm_wake();
 }
 
 /// Tell OS to context switch tasks, this should be set to the lowest priority so that all other

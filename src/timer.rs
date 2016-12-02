@@ -3,14 +3,17 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-static mut TIME: Timer = Timer::new();
-
 use volatile::Volatile;
+use queue::Queue;
+use task;
+use task::TaskControl;
+
+static mut TIME: Timer = Timer::new();
 
 #[derive(Copy, Clone)]
 pub struct Timer {
-  sec: u32,
-  msec: u32,
+  pub sec: usize,
+  pub msec: usize,
 }
 
 impl Timer {
@@ -35,19 +38,19 @@ impl Timer {
     unsafe { TIME }
   }
 
-  pub fn delay_ms(ms: u32) {
+  pub fn delay_ms(ms: usize) {
     unsafe {
       let v_msec = Volatile::new(&TIME.msec);
-      let start: u32 = v_msec.load();
-      while *v_msec - start < ms {/* spin */}
+      let start: usize = v_msec.load();
+      let mut remaining = *v_msec - start;
+      while remaining < ms {
+        task::sleep_for(&TIME as *const _ as usize, ms - remaining);
+        remaining = *v_msec - start;
+      }
     }
   }
 
-  pub fn delay_s(s: u32) {
-    unsafe {
-      let v_sec = Volatile::new(&TIME.sec);
-      let start: u32 = v_sec.load();
-      while *v_sec - start < s {/* spin */}
-    }
+  pub fn delay_s(s: usize) {
+    Self::delay_ms(s * 1000);
   }
 }

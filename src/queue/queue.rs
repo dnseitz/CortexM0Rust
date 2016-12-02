@@ -1,10 +1,10 @@
-// task/list.rs
+// queue/queue.rs
 // AltOSRust
 //
-// Created by Daniel Seitz on 11/30/16
+// Created by Daniel Seitz on 12/2/16
 
-use super::TaskControl;
-use ::alloc::boxed::Box;
+use task::TaskControl;
+use alloc::boxed::Box;
 
 pub trait Queuable {
   fn set_next(&mut self, Option<Box<Self>>);
@@ -68,6 +68,10 @@ impl<T: Queuable> Queue<T> {
 
     while let Some(mut head) = self.head.take() {
       self.head = head.take_next();
+      if self.head.is_none() {
+        self.tail = ::core::ptr::null_mut();
+      }
+
       if predicate(&head) {
         matching.enqueue(head);
       }
@@ -108,9 +112,13 @@ impl<T: Queuable> Queue<T> {
     }
     *self = scratch;
   }
+
+  pub fn remove_all(&mut self) -> Queue<T> {
+    ::core::mem::replace(self, Queue::new())
+  }
 }
 
-struct Node<T> {
+pub struct Node<T> {
   data: T,
   next: Option<Box<Node<T>>>,
 }
@@ -137,12 +145,11 @@ impl<T> Queuable for Node<T> {
 #[cfg(test)]
 mod tests {
   use super::{Queue, Node};
-  use super::super::TaskControl;
   use alloc::boxed::Box;
 
   #[test]
   fn empty_dequeue() {
-    let mut list: Queue<TaskControl> = Queue::new();
+    let mut list: Queue<Node<usize>> = Queue::new();
 
     assert!(list.dequeue().is_none());
   }
@@ -252,5 +259,24 @@ mod tests {
     assert_eq!(list.dequeue().unwrap().data, 30);
 
     assert!(list.dequeue().is_none());
+  }
+
+  #[test]
+  fn remove_all() {
+    let mut list = Queue::new();
+
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+    list.enqueue(Box::new(Node::new(3)));
+
+    let mut old = list.remove_all();
+
+    assert_eq!(old.dequeue().unwrap().data, 1);
+    assert_eq!(old.dequeue().unwrap().data, 2);
+    assert_eq!(old.dequeue().unwrap().data, 3);
+    assert!(old.dequeue().is_none());
+
+    assert!(list.dequeue().is_none());
+
   }
 }

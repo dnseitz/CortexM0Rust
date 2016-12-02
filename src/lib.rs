@@ -19,6 +19,8 @@ extern crate alloc;
 #[macro_use]
 extern crate collections;
 
+#[macro_use]
+mod atomic;
 mod exceptions;
 mod peripheral;
 mod math;
@@ -28,8 +30,8 @@ mod arm;
 mod interrupt;
 mod task;
 mod system_control;
-mod atomic;
 mod sync;
+mod queue;
 
 use peripheral::gpio;
 use peripheral::rcc;
@@ -67,9 +69,20 @@ pub fn start() -> ! {
   task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
   //task::new_task(mutex_task_1, 512, task::Priority::Critical, "first mutex task");
   //task::new_task(mutex_task_2, 512, task::Priority::Critical, "second mutex task");
+  //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
   task::start_first_task();
 
   loop { unsafe { arm::bkpt() }; }
+}
+
+fn delay_task() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(100);
+    pb3.reset();
+    timer::Timer::delay_ms(100);
+  }
 }
 
 fn mutex_task_1() {

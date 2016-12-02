@@ -3,15 +3,16 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-pub mod list;
+//pub mod list;
 
 use volatile::Volatile;
 use system_control;
-use self::list::{Queue, Queuable};
+use queue::{Queue, Queuable};
 use alloc::boxed::Box;
 use collections::Vec;
 use sync::Mutex;
 pub use self::imp::*;
+use self::priv_imp::*;
 
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
@@ -22,6 +23,9 @@ pub static mut CURRENT_TASK: Option<Box<TaskControl>> = None;
 // TODO: Wrap task_list in a mutex lock to provide safe access
 static mut TASK_LIST: Queue<TaskControl> = Queue::new();
 static mut SLEEP_LIST: Queue<TaskControl> = Queue::new();
+static mut DELAY_LIST: Queue<TaskControl> = Queue::new();
+static mut OVERFLOW_DELAY_LIST: Queue<TaskControl> = Queue::new();
+static mut INIT_TASK: TaskControl = TaskControl::uninitialized("init");
 
 pub struct TaskHandle(*const TaskControl);
 
@@ -58,6 +62,9 @@ pub struct TaskControl {
   name: &'static str,
   valid: usize,
   wchan: usize,
+  delay: usize,
+  overflowed: bool,
+  init: bool,
   next: Option<Box<TaskControl>>,
 }
 
@@ -77,6 +84,9 @@ impl TaskControl {
       name: name,
       valid: VALID_TASK,
       wchan: 0,
+      delay: 0,
+      overflowed: false,
+      init: false,
       next: None,
     }
   }
@@ -92,6 +102,9 @@ impl TaskControl {
       name: name,
       valid: INVALID_TASK,
       wchan: 0,
+      delay: 0,
+      overflowed: false,
+      init: false,
       next: None,
     }
   }
@@ -142,26 +155,44 @@ impl Queuable for TaskControl {
 /// publicly so that the compiler doesn't optimize it away when compiling for release.
 #[no_mangle]
 pub unsafe fn switch_context() {
+  if !is_kernel_running() {
+    panic!("switch_context - This function should only get called from kernel code!");
+  }
   match CURRENT_TASK.take() {
     Some(running) => {
       if running.is_stack_overflowed() {
         ::arm::bkpt();
       }
-      loop {
-        if let Some(new_task) = TASK_LIST.dequeue() {
-          if running.state == State::Blocked {
-            SLEEP_LIST.enqueue(running);
+      if running.init {
+        ::core::mem::forget(running);
+      }
+      else if running.state == State::Blocked {
+        if running.delay != 0 {
+          if running.overflowed {
+            OVERFLOW_DELAY_LIST.enqueue(running);
           }
           else {
-            TASK_LIST.enqueue(running);
+            DELAY_LIST.enqueue(running);
           }
+        }
+        else {
+          SLEEP_LIST.enqueue(running);
+        }
+      }
+      else {
+        TASK_LIST.enqueue(running);
+      }
+
+      loop {
+        if let Some(new_task) = TASK_LIST.dequeue() {
           CURRENT_TASK = Some(new_task);
           break;
         }
         else {
           // Go to next priority queue
           // If all queues are empty, reschedule current task
-          CURRENT_TASK = Some(running);
+          let init_task = Box::from_raw(&mut INIT_TASK as *mut _);
+          CURRENT_TASK = Some(init_task);
           break;
         }
       }
@@ -190,10 +221,13 @@ mod tid {
 }
 
 mod imp {
-  use super::{State, TaskControl, TaskHandle, TASK_LIST, SLEEP_LIST, CURRENT_TASK, Priority};
+  use super::{State, TaskControl, TaskHandle, TASK_LIST, SLEEP_LIST, CURRENT_TASK, Priority,
+  DELAY_LIST, OVERFLOW_DELAY_LIST};
+  use super::priv_imp::*;
   use system_control;
   use alloc::boxed::Box;
-  use super::list::{Queue, Queuable};
+  use queue::{Queue, Queuable};
+  use timer;
 
   /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
@@ -214,16 +248,47 @@ mod imp {
   }
 
   pub fn sleep(wchan: usize) {
+    sleep_for(wchan, 0);
+  }
+
+  pub fn sleep_for(wchan: usize, delay: usize) {
     unsafe {
       if let Some(current) = CURRENT_TASK.as_mut() {
+        let ticks = timer::Timer::get_current().msec;
         current.wchan = wchan;
         current.state = State::Blocked;
+        current.delay = ticks + delay;
+        if ticks + delay < ticks {
+          current.overflowed = true;
+        }
       }
       else {
-        panic!("sleep_on - current task doesn't exist!");
+        panic!("sleep_for - current task doesn't exist!");
       }
     }
     yield_task();
+  }
+
+  pub fn alarm_wake() {
+    if !is_kernel_running() {
+      panic!("alarm_wake - This function should only be called from kernel code!");
+    }
+
+    let ticks = timer::Timer::get_current().msec;
+    
+    unsafe {
+      let mut to_wake: Queue<TaskControl> = DELAY_LIST.remove(|task| task.delay <= ticks);
+      to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; task.delay = 0; });
+      TASK_LIST.append(to_wake);
+    }
+
+    if ticks == !0 {
+      unsafe {
+        let mut overflowed: Queue<TaskControl> = OVERFLOW_DELAY_LIST.remove_all();
+        overflowed.modify_all(|task| task.overflowed = false );
+        DELAY_LIST.append(overflowed);
+      }
+    }
   }
 
   pub fn wake(wchan: usize) {
@@ -237,6 +302,7 @@ mod imp {
   /// Start running the first task in the queue
   pub fn start_first_task() {
     unsafe {
+      init_first_task();
       CURRENT_TASK = TASK_LIST.dequeue();
       if CURRENT_TASK.is_none() {
         panic!("start_first_task - tried to start running tasks when no tasks have been created!");
@@ -271,5 +337,40 @@ mod imp {
         : "volatile");
     }
   }
+}
 
+mod priv_imp {
+  use super::{INIT_TASK, TaskControl, Priority};
+
+  pub fn is_kernel_running() -> bool {
+    unsafe {
+      const PSP: usize = 1 << 1;
+      let stack_mask: usize;
+      #[cfg(target_arch="arm")]
+      asm!("mrs $0, CONTROL\n" /* get the stack control mask */
+        : "=r"(stack_mask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+      stack_mask & PSP == 0
+    }
+  }
+
+  pub fn init_first_task() {
+    let mut task = TaskControl::new(256, "init");
+    task.initialize(init_task_code, Priority::Low);
+    task.init = true;
+
+    unsafe { INIT_TASK = task };
+  }
+
+  fn init_task_code() {
+    loop {
+      #[cfg(target_arch="arm")]
+      unsafe {
+        asm!("wfi");
+      }
+      super::yield_task();
+    }
+  }
 }
