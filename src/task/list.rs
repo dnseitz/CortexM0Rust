@@ -6,27 +6,34 @@
 use super::TaskControl;
 use ::alloc::boxed::Box;
 
-pub struct TaskQueue {
-  head: Option<Box<TaskControl>>,
-  tail: *mut TaskControl,
+pub trait Queuable {
+  fn set_next(&mut self, Option<Box<Self>>);
+  fn take_next(&mut self) -> Option<Box<Self>>;
 }
 
-impl TaskQueue {
+pub struct Queue<T: Queuable> {
+  head: Option<Box<T>>,
+  tail: *mut T,
+}
+
+impl<T: Queuable> Queue<T> {
   pub const fn new() -> Self {
-    TaskQueue { 
+    Queue { 
       head: None,
       tail: ::core::ptr::null_mut(),
     }
   }
 
-  pub fn enqueue(&mut self, elem: Box<TaskControl>) {
+  /// Place a new item onto the end of the queue.
+  /// O(1) algorithmic time
+  pub fn enqueue(&mut self, elem: Box<T>) {
     let mut new_tail = elem;
 
     let raw_tail: *mut _ = &mut *new_tail;
 
     if !self.tail.is_null() {
       unsafe {
-        (*self.tail).next = Some(new_tail);
+        (*self.tail).set_next(Some(new_tail));
       }
     }
     else {
@@ -36,10 +43,12 @@ impl TaskQueue {
     self.tail = raw_tail;
   }
 
-  pub fn dequeue(&mut self) -> Option<Box<TaskControl>> {
+  /// Take an item off of the front of the queue. If there are no items in the queue returns None.
+  /// O(1) algorithmic time
+  pub fn dequeue(&mut self) -> Option<Box<T>> {
     match self.head.take() {
       Some(mut head) => {
-        self.head = head.next.take();
+        self.head = head.take_next();
 
         if self.head.is_none() {
           self.tail = ::core::ptr::null_mut();
@@ -50,69 +59,198 @@ impl TaskQueue {
       None => None,
     }
   }
+  
+  /// Remove all elements matching `predicate` and return them in a new queue
+  /// O(n) algorithmic time
+  pub fn remove<F: Fn(&T) -> bool>(&mut self, predicate: F) -> Queue<T> {
+    let mut matching = Queue::new();
+    let old_tail = self.tail;
+
+    while let Some(mut head) = self.head.take() {
+      self.head = head.take_next();
+      if predicate(&head) {
+        matching.enqueue(head);
+      }
+      else {
+        self.enqueue(head);
+      }
+      if let Some(head) = self.head.as_mut() {
+        if &mut **head as *mut _ == old_tail {
+          break;
+        }
+      }
+    }
+    matching
+  }
+  
+  /// Append all the elements of `queue` onto self.
+  /// O(1) algorithmic time
+  pub fn append(&mut self, mut queue: Queue<T>) {
+    if !self.tail.is_null() {
+      unsafe {
+        (*self.tail).set_next(queue.head.take());
+      }
+    }
+    else {
+      self.head = queue.head.take();
+    }
+
+    self.tail = queue.tail;
+  }
+
+  /// Modify all the elements of the queue with the block passed in.
+  /// O(n) algorithmic time
+  pub fn modify_all<F: Fn(&mut T)>(&mut self, block: F) {
+    let mut scratch = Queue::new();
+    while let Some(mut node) = self.dequeue() {
+      block(&mut *node);
+      scratch.enqueue(node);
+    }
+    *self = scratch;
+  }
+}
+
+struct Node<T> {
+  data: T,
+  next: Option<Box<Node<T>>>,
+}
+
+impl<T> Node<T> {
+  pub fn new(data: T) -> Self {
+    Node { 
+      data: data,
+      next: None,
+    }
+  }
+}
+
+impl<T> Queuable for Node<T> {
+  fn take_next(&mut self) -> Option<Box<Self>> {
+    self.next.take()
+  }
+
+  fn set_next(&mut self, next: Option<Box<Self>>) {
+    self.next = next;
+  }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::TaskQueue;
+  use super::{Queue, Node};
   use super::super::TaskControl;
   use alloc::boxed::Box;
 
   #[test]
   fn empty_dequeue() {
-    let mut list = TaskQueue::new();
+    let mut list: Queue<TaskControl> = Queue::new();
 
     assert!(list.dequeue().is_none());
   }
 
   #[test]
   fn basics() {
-    let mut list = TaskQueue::new();
-
-    let t1 = Box::new(TaskControl::uninitialized("1"));
-    let t2 = Box::new(TaskControl::uninitialized("2"));
-    let t3 = Box::new(TaskControl::uninitialized("3"));
-    let t4 = Box::new(TaskControl::uninitialized("4"));
-    let t5 = Box::new(TaskControl::uninitialized("5"));
-    let t6 = Box::new(TaskControl::uninitialized("6"));
-    let t7 = Box::new(TaskControl::uninitialized("7"));
-
-    let pt1: *const _ = &*t1;
-    let pt2: *const _ = &*t2;
-    let pt3: *const _ = &*t3;
-    let pt4: *const _ = &*t4;
-    let pt5: *const _ = &*t5;
-    let pt6: *const _ = &*t6;
-    let pt7: *const _ = &*t7;
+    let mut list = Queue::new();
 
     // Populate list
-    list.enqueue(t1);
-    list.enqueue(t2);
-    list.enqueue(t3);
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+    list.enqueue(Box::new(Node::new(3)));
 
     // Check normal removal
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt1);
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt2);
+    assert_eq!(list.dequeue().unwrap().data, 1);
+    assert_eq!(list.dequeue().unwrap().data, 2);
 
     // Push some more just to make sure nothing's corrupted
-    list.enqueue(t4);
-    list.enqueue(t5);
+    list.enqueue(Box::new(Node::new(4)));
+    list.enqueue(Box::new(Node::new(5)));
 
     // Check normal removal
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt3);
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt4);
+    assert_eq!(list.dequeue().unwrap().data, 3);
+    assert_eq!(list.dequeue().unwrap().data, 4);
 
     // Check exhaustion
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt5);
+    assert_eq!(list.dequeue().unwrap().data, 5);
     assert!(list.dequeue().is_none());
 
     // Check the exhaustion case fixed the pointer right
-    list.enqueue(t6);
-    list.enqueue(t7);
+    list.enqueue(Box::new(Node::new(6)));
+    list.enqueue(Box::new(Node::new(7)));
 
     // Check normal removal
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt6);
-    assert_eq!(&*list.dequeue().unwrap() as *const _, pt7);
+    assert_eq!(list.dequeue().unwrap().data, 6);
+    assert_eq!(list.dequeue().unwrap().data, 7);
+    assert!(list.dequeue().is_none());
+  }
+
+  #[test]
+  fn remove_predicate() {
+    let mut list = Queue::new();
+
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+    list.enqueue(Box::new(Node::new(3)));
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+    list.enqueue(Box::new(Node::new(3)));
+
+    let predicate = |task: &Node<usize>| task.data == 1;
+
+    let mut removed = list.remove(predicate);
+    assert_eq!(removed.dequeue().unwrap().data, 1);
+    assert_eq!(removed.dequeue().unwrap().data, 1);
+    assert!(removed.dequeue().is_none());
+  }
+
+  #[test]
+  fn append_queue() {
+    let mut list1 = Queue::new();
+    let mut list2 = Queue::new();
+
+    list1.enqueue(Box::new(Node::new(1)));
+    list1.enqueue(Box::new(Node::new(2)));
+    list2.enqueue(Box::new(Node::new(3)));
+    list2.enqueue(Box::new(Node::new(4)));
+
+    list1.append(list2);
+
+    assert_eq!(list1.dequeue().unwrap().data, 1);
+    assert_eq!(list1.dequeue().unwrap().data, 2);
+    assert_eq!(list1.dequeue().unwrap().data, 3);
+    assert_eq!(list1.dequeue().unwrap().data, 4);
+
+    assert!(list1.dequeue().is_none());
+  }
+
+  #[test]
+  fn append_empty() {
+    let mut list1 = Queue::new();
+    let mut list2 = Queue::new();
+
+    list1.enqueue(Box::new(Node::new(1)));
+    list1.enqueue(Box::new(Node::new(2)));
+
+    list1.append(list2);
+
+    assert_eq!(list1.dequeue().unwrap().data, 1);
+    assert_eq!(list1.dequeue().unwrap().data, 2);
+
+    assert!(list1.dequeue().is_none());
+  }
+
+  #[test]
+  fn modify_all() {
+    let mut list = Queue::new();
+
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+    list.enqueue(Box::new(Node::new(3)));
+
+    list.modify_all(|task: &mut Node<usize>| task.data *= 10);
+
+    assert_eq!(list.dequeue().unwrap().data, 10);
+    assert_eq!(list.dequeue().unwrap().data, 20);
+    assert_eq!(list.dequeue().unwrap().data, 30);
+
     assert!(list.dequeue().is_none());
   }
 }

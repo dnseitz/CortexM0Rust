@@ -3,25 +3,32 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-mod list;
+pub mod list;
 
 use volatile::Volatile;
 use system_control;
-use self::list::TaskQueue;
+use self::list::{Queue, Queuable};
 use alloc::boxed::Box;
 use collections::Vec;
+use sync::Mutex;
+
+const VALID_TASK: usize = 0xBADB0100;
+const INVALID_TASK: usize = 0x0;
 
 #[no_mangle]
 pub static mut CURRENT_TASK: Option<Box<TaskControl>> = None;
 
 // TODO: Wrap task_list in a mutex lock to provide safe access
-static mut TASK_LIST: TaskQueue = TaskQueue::new();
+static mut TASK_LIST: Queue<TaskControl> = Queue::new();
+static mut SLEEP_LIST: Queue<TaskControl> = Queue::new();
 
-/*
-struct TaskHandle<'task> {
-  task: &'task TaskControl,
+pub struct TaskHandle(*const TaskControl);
+
+impl TaskHandle {
+  fn new(task: *const TaskControl) -> Self {
+    TaskHandle(task)
+  }
 }
-*/
 
 #[derive(Copy, Clone)]
 pub enum Priority {
@@ -29,7 +36,7 @@ pub enum Priority {
   Low,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum State {
   Ready,
   Running,
@@ -41,14 +48,17 @@ enum State {
 /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
 /// should be allocated for the stack, if there is not enough space to allocate the stack the
 /// kernel will panic with an out of memory (oom) error.
-pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) {
+pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
   let mut task = Box::new(TaskControl::new(stack_depth, name));
   task.initialize(code, priority);
+  let handle = TaskHandle::new(&*task);
 
   unsafe { TASK_LIST.enqueue(task); }
+  handle
 }
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct TaskControl {
   stack: usize, /* stack pointer MUST be first field */
   stack_base: usize,
@@ -57,6 +67,8 @@ pub struct TaskControl {
   tid: usize,
   priority: Priority,
   name: &'static str,
+  valid: usize,
+  wchan: usize,
   next: Option<Box<TaskControl>>,
 }
 
@@ -74,6 +86,8 @@ impl TaskControl {
       tid: !0,
       priority: Priority::Critical,
       name: name,
+      valid: VALID_TASK,
+      wchan: 0,
       next: None,
     }
   }
@@ -87,6 +101,8 @@ impl TaskControl {
       tid: !0,
       priority: Priority::Low,
       name: name,
+      valid: INVALID_TASK,
+      wchan: 0,
       next: None,
     }
   }
@@ -123,6 +139,15 @@ impl TaskControl {
   }
 }
 
+impl Queuable for TaskControl {
+  fn take_next(&mut self) -> Option<Box<Self>> {
+    self.next.take()
+  }
+  fn set_next(&mut self, next: Option<Box<Self>>) {
+    self.next = next;
+  }
+}
+
 /// Select a new task to run and switch its context, this function MUST only be called from the
 /// PendSV handler, calling it from elsewhere could lead to undefined behavior. It must be exposed
 /// publicly so that the compiler doesn't optimize it away when compiling for release.
@@ -135,7 +160,12 @@ pub unsafe fn switch_context() {
       }
       loop {
         if let Some(new_task) = TASK_LIST.dequeue() {
-          TASK_LIST.enqueue(running);
+          if running.state == State::Blocked {
+            SLEEP_LIST.enqueue(running);
+          }
+          else {
+            TASK_LIST.enqueue(running);
+          }
           CURRENT_TASK = Some(new_task);
           break;
         }
@@ -200,7 +230,27 @@ fn exit_error() -> ! {
 pub fn yield_task() {
   let scb = system_control::scb();
   scb.set_pend_sv();
-  scb.clear_pend_sv();
+}
+
+pub fn sleep(wchan: usize) {
+  unsafe {
+    if let Some(current) = CURRENT_TASK.as_mut() {
+      current.wchan = wchan;
+      current.state = State::Blocked;
+    }
+    else {
+      panic!("sleep_on - current task doesn't exist!");
+    }
+  }
+  yield_task();
+}
+
+pub fn wake(wchan: usize) {
+  unsafe {
+    let mut to_wake: Queue<TaskControl> = SLEEP_LIST.remove(|task| task.wchan == wchan);
+    to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; });
+    TASK_LIST.append(to_wake);
+  }
 }
 
 mod tid {
