@@ -3,20 +3,15 @@
 //
 // Created by Daniel Seitz on 12/2/16
 
-use task::TaskControl;
+use super::Queueable;
 use alloc::boxed::Box;
 
-pub trait Queuable {
-  fn set_next(&mut self, Option<Box<Self>>);
-  fn take_next(&mut self) -> Option<Box<Self>>;
-}
-
-pub struct Queue<T: Queuable> {
+pub struct Queue<T: Queueable> {
   head: Option<Box<T>>,
   tail: *mut T,
 }
 
-impl<T: Queuable> Queue<T> {
+impl<T: Queueable> Queue<T> {
   pub const fn new() -> Self {
     Queue { 
       head: None,
@@ -132,7 +127,7 @@ impl<T> Node<T> {
   }
 }
 
-impl<T> Queuable for Node<T> {
+impl<T> Queueable for Node<T> {
   fn take_next(&mut self) -> Option<Box<Self>> {
     self.next.take()
   }

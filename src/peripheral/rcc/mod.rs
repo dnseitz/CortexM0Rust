@@ -9,8 +9,8 @@
 use super::Control;
 use arm::dmb;
 use volatile::Volatile;
-pub use self::clock_control::Clock as Clock;
-pub use self::enable::Peripheral as Peripheral;
+pub use self::clock_control::Clock;
+pub use self::enable::Peripheral;
 
 mod clock_control;
 mod config;

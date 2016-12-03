@@ -14,9 +14,18 @@ alloc = { path = "libs/alloc" }
 collections = { path = "libs/collections" }
 
 [profile.dev]
+opt-level = 1
+debug = true
+debug-assertions = true
 panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[features]
+default = ["rcc", "gpio", "systick"]
+rcc = []
+gpio = []
+systick = []
 
 [workspace]

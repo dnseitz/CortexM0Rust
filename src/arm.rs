@@ -26,6 +26,11 @@ mod imp {
   pub unsafe fn disable_interrupts() {
     asm!("cpsid i");
   }
+
+  #[inline(always)]
+  pub unsafe fn wfi() {
+    asm!("wfi");
+  }
 }
 
 #[cfg(not(target_arch="arm"))]
@@ -41,4 +46,7 @@ mod imp {
 
   #[inline(always)]
   pub unsafe fn disable_interrupts() {}
+
+  #[inline(always)]
+  pub unsafe fn wfi() {}
 }

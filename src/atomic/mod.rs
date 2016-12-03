@@ -67,7 +67,7 @@ pub struct Atomic<T> {
   data: UnsafeCell<T>,
 }
 
-unsafe impl<T> Sync for Atomic<T> {}
+unsafe impl<T: Send> Sync for Atomic<T> {}
 
 impl<T: Copy> Atomic<T> {
   pub const fn new(data: T) -> Self {

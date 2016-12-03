@@ -12,6 +12,7 @@
 #![feature(collections)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
 #![no_std]
+//#![allow(dead_code)]
 
 #[cfg(not(test))]
 extern crate bump_allocator;
@@ -64,12 +65,14 @@ pub fn start() -> ! {
   *guard = 5;
   drop(guard);
 
-  task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
-  task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
-  task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
+  //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
+  //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
+  //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
   //task::new_task(mutex_task_1, 512, task::Priority::Critical, "first mutex task");
   //task::new_task(mutex_task_2, 512, task::Priority::Critical, "second mutex task");
   //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
+  task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
+  task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
   task::start_first_task();
 
   loop { unsafe { arm::bkpt() }; }
@@ -114,7 +117,6 @@ fn test_task_1() {
       pb3.reset();
       timer::Timer::delay_ms(100);
     }
-    task::yield_task();
   }
 }
 
@@ -127,7 +129,6 @@ fn test_task_2() {
       pb3.reset();
       timer::Timer::delay_ms(500);
     }
-    task::yield_task();
   }
 }
 
@@ -140,9 +141,33 @@ fn test_task_3() {
       pb3.reset();
       timer::Timer::delay_ms(50);
     }
-    task::yield_task();
   }
+}
 
+fn frequency_task_1() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  let delay = 500;
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(delay);
+    pb3.reset();
+    timer::Timer::delay_ms(delay);
+  }
+}
+
+fn frequency_task_2() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  let mut delay = 250;
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(delay);
+    pb3.reset();
+    timer::Timer::delay_ms(delay);
+    delay += 10;
+    if delay > 750 {
+      delay = 250;
+    }
+  }
 }
 
 mod vector_table {

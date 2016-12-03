@@ -68,7 +68,7 @@ impl MODER {
       let mut reg = self.addr();
       
       // Zero the field first
-      *reg &= 0b11 << (port * 2);
+      *reg &= !(0b11 << (port * 2));
       *reg |= mask << (port * 2);
     }
   }

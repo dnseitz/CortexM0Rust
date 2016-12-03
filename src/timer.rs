@@ -4,9 +4,7 @@
 // Created by Daniel Seitz on 11/30/16
 
 use volatile::Volatile;
-use queue::Queue;
 use task;
-use task::TaskControl;
 
 static mut TIME: Timer = Timer::new();
 

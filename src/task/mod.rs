@@ -3,28 +3,25 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-//pub mod list;
-
 use volatile::Volatile;
-use system_control;
-use queue::{Queue, Queuable};
+use queue::{AtomicQueue, Queueable};
 use alloc::boxed::Box;
 use collections::Vec;
-use sync::Mutex;
 pub use self::imp::*;
 use self::priv_imp::*;
 
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
+const NUM_PRIORITIES: usize = 3;
 
 #[no_mangle]
+#[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<TaskControl>> = None;
 
-// TODO: Wrap task_list in a mutex lock to provide safe access
-static mut TASK_LIST: Queue<TaskControl> = Queue::new();
-static mut SLEEP_LIST: Queue<TaskControl> = Queue::new();
-static mut DELAY_LIST: Queue<TaskControl> = Queue::new();
-static mut OVERFLOW_DELAY_LIST: Queue<TaskControl> = Queue::new();
+static PRIORITY_QUEUES: [AtomicQueue<TaskControl>; NUM_PRIORITIES] = [AtomicQueue::new(), AtomicQueue::new(), AtomicQueue::new()];
+static SLEEP_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
+static DELAY_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
+static OVERFLOW_DELAY_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
 static mut INIT_TASK: TaskControl = TaskControl::uninitialized("init");
 
 pub struct TaskHandle(*const TaskControl);
@@ -39,6 +36,21 @@ impl TaskHandle {
 pub enum Priority {
   Critical,
   Low,
+  Init,
+}
+
+impl Priority {
+  fn all() -> ::core::ops::Range<usize> {
+    (0..NUM_PRIORITIES)
+  }
+
+  fn index(&self) -> usize {
+    match *self {
+      Priority::Critical => 0,
+      Priority::Low => 1,
+      Priority::Init => 2,
+    }
+  }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -64,9 +76,10 @@ pub struct TaskControl {
   wchan: usize,
   delay: usize,
   overflowed: bool,
-  init: bool,
   next: Option<Box<TaskControl>>,
 }
+
+unsafe impl Send for TaskControl {}
 
 impl TaskControl {
   fn new(depth: usize, name: &'static str) -> Self {
@@ -74,19 +87,19 @@ impl TaskControl {
     let stack = stack_mem.as_ptr() as usize;
     // Don't free the heap space
     ::core::mem::forget(stack_mem);
+    let tid = tid::fetch_next_tid();
     TaskControl {
       stack: stack + depth,
       stack_base: stack,
       stack_depth: depth,
       state: State::Embryo,
-      tid: !0,
+      tid: tid,
       priority: Priority::Critical,
       name: name,
-      valid: VALID_TASK,
+      valid: VALID_TASK + (tid & 0xFF),
       wchan: 0,
       delay: 0,
       overflowed: false,
-      init: false,
       next: None,
     }
   }
@@ -104,7 +117,6 @@ impl TaskControl {
       wchan: 0,
       delay: 0,
       overflowed: false,
-      init: false,
       next: None,
     }
   }
@@ -129,7 +141,6 @@ impl TaskControl {
     }
     self.state = State::Ready;
     self.priority = priority;
-    self.tid = tid::fetch_next_tid();
   }
 
   /// Check if the stack has gone past its bounds
@@ -141,7 +152,7 @@ impl TaskControl {
   }
 }
 
-impl Queuable for TaskControl {
+impl Queueable for TaskControl {
   fn take_next(&mut self) -> Option<Box<Self>> {
     self.next.take()
   }
@@ -154,46 +165,40 @@ impl Queuable for TaskControl {
 /// PendSV handler, calling it from elsewhere could lead to undefined behavior. It must be exposed
 /// publicly so that the compiler doesn't optimize it away when compiling for release.
 #[no_mangle]
+#[doc(hidden)]
 pub unsafe fn switch_context() {
   if !is_kernel_running() {
     panic!("switch_context - This function should only get called from kernel code!");
   }
   match CURRENT_TASK.take() {
     Some(running) => {
+      let queue_index = running.priority.index();
       if running.is_stack_overflowed() {
         ::arm::bkpt();
       }
-      if running.init {
-        ::core::mem::forget(running);
-      }
-      else if running.state == State::Blocked {
+      if running.state == State::Blocked {
         if running.delay != 0 {
           if running.overflowed {
-            OVERFLOW_DELAY_LIST.enqueue(running);
+            OVERFLOW_DELAY_QUEUE.enqueue(running);
           }
           else {
-            DELAY_LIST.enqueue(running);
+            DELAY_QUEUE.enqueue(running);
           }
         }
         else {
-          SLEEP_LIST.enqueue(running);
+          SLEEP_QUEUE.enqueue(running);
         }
       }
       else {
-        TASK_LIST.enqueue(running);
+        PRIORITY_QUEUES[queue_index].enqueue(running);
       }
 
-      loop {
-        if let Some(new_task) = TASK_LIST.dequeue() {
-          CURRENT_TASK = Some(new_task);
-          break;
-        }
-        else {
-          // Go to next priority queue
-          // If all queues are empty, reschedule current task
-          let init_task = Box::from_raw(&mut INIT_TASK as *mut _);
-          CURRENT_TASK = Some(init_task);
-          break;
+      'main: loop {
+        for i in Priority::all() {
+          if let Some(new_task) = PRIORITY_QUEUES[i].dequeue() {
+            CURRENT_TASK = Some(new_task);
+            break 'main;
+          }
         }
       }
     },
@@ -221,13 +226,13 @@ mod tid {
 }
 
 mod imp {
-  use super::{State, TaskControl, TaskHandle, TASK_LIST, SLEEP_LIST, CURRENT_TASK, Priority,
-  DELAY_LIST, OVERFLOW_DELAY_LIST};
+  use super::{SLEEP_QUEUE, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES, CURRENT_TASK};
+  use super::{State, Priority, TaskControl, TaskHandle};
   use super::priv_imp::*;
   use system_control;
   use alloc::boxed::Box;
-  use queue::{Queue, Queuable};
-  use timer;
+  use queue::Queue;
+  use timer::Timer;
 
   /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
@@ -237,7 +242,7 @@ mod imp {
     task.initialize(code, priority);
     let handle = TaskHandle::new(&*task);
 
-    unsafe { TASK_LIST.enqueue(task); }
+    PRIORITY_QUEUES[task.priority.index()].enqueue(task); 
     handle
   }
 
@@ -254,7 +259,7 @@ mod imp {
   pub fn sleep_for(wchan: usize, delay: usize) {
     unsafe {
       if let Some(current) = CURRENT_TASK.as_mut() {
-        let ticks = timer::Timer::get_current().msec;
+        let ticks = Timer::get_current().msec;
         current.wchan = wchan;
         current.state = State::Blocked;
         current.delay = ticks + delay;
@@ -274,28 +279,26 @@ mod imp {
       panic!("alarm_wake - This function should only be called from kernel code!");
     }
 
-    let ticks = timer::Timer::get_current().msec;
+    let ticks = Timer::get_current().msec;
     
-    unsafe {
-      let mut to_wake: Queue<TaskControl> = DELAY_LIST.remove(|task| task.delay <= ticks);
-      to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; task.delay = 0; });
-      TASK_LIST.append(to_wake);
+    let mut to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.delay <= ticks);
+    to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; task.delay = 0; });
+    while let Some(task) = to_wake.dequeue() {
+      PRIORITY_QUEUES[task.priority.index()].enqueue(task);
     }
 
     if ticks == !0 {
-      unsafe {
-        let mut overflowed: Queue<TaskControl> = OVERFLOW_DELAY_LIST.remove_all();
-        overflowed.modify_all(|task| task.overflowed = false );
-        DELAY_LIST.append(overflowed);
-      }
+      let mut overflowed: Queue<TaskControl> = OVERFLOW_DELAY_QUEUE.remove_all();
+      overflowed.modify_all(|task| task.overflowed = false );
+      DELAY_QUEUE.append(overflowed);
     }
   }
 
   pub fn wake(wchan: usize) {
-    unsafe {
-      let mut to_wake: Queue<TaskControl> = SLEEP_LIST.remove(|task| task.wchan == wchan);
-      to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; });
-      TASK_LIST.append(to_wake);
+    let mut to_wake: Queue<TaskControl> = SLEEP_QUEUE.remove(|task| task.wchan == wchan);
+    to_wake.modify_all(|task| { task.wchan = 0; task.state = State::Ready; });
+    while let Some(task) = to_wake.dequeue() {
+      PRIORITY_QUEUES[task.priority.index()].enqueue(task);
     }
   }
 
@@ -303,10 +306,14 @@ mod imp {
   pub fn start_first_task() {
     unsafe {
       init_first_task();
-      CURRENT_TASK = TASK_LIST.dequeue();
-      if CURRENT_TASK.is_none() {
-        panic!("start_first_task - tried to start running tasks when no tasks have been created!");
+      for i in Priority::all() {
+        if let Some(task) = PRIORITY_QUEUES[i].dequeue() {
+          CURRENT_TASK = Some(task);
+          break;
+        }
       }
+      debug_assert!(CURRENT_TASK.is_some());
+
       #[cfg(target_arch="arm")]
       asm!(
         concat!(
@@ -340,7 +347,9 @@ mod imp {
 }
 
 mod priv_imp {
+  use super::PRIORITY_QUEUES;
   use super::{INIT_TASK, TaskControl, Priority};
+  use alloc::boxed::Box;
 
   pub fn is_kernel_running() -> bool {
     unsafe {
@@ -358,10 +367,12 @@ mod priv_imp {
 
   pub fn init_first_task() {
     let mut task = TaskControl::new(256, "init");
-    task.initialize(init_task_code, Priority::Low);
-    task.init = true;
+    task.initialize(init_task_code, Priority::Init);
 
-    unsafe { INIT_TASK = task };
+    unsafe { 
+      INIT_TASK = task;
+      PRIORITY_QUEUES[INIT_TASK.priority.index()].enqueue(Box::from_raw(&mut INIT_TASK));
+    }
   }
 
   fn init_task_code() {
