@@ -59,6 +59,12 @@ impl<T: Queueable> AtomicQueue<T> {
     }
   }
 
+  pub fn is_empty(&self) -> bool {
+    atomic! {
+      self.get_internal().is_empty()
+    }
+  }
+
   fn get_internal(&self) -> &Queue<T> {
     unsafe { &*self.internal.get() }
   }

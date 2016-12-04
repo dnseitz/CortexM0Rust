@@ -13,6 +13,7 @@ use self::priv_imp::*;
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
 const NUM_PRIORITIES: usize = 3;
+pub const FOREVER_CHAN: usize = 0;
 
 #[no_mangle]
 #[doc(hidden)]
@@ -50,6 +51,10 @@ impl Priority {
       Priority::Low => 1,
       Priority::Init => 2,
     }
+  }
+
+  fn higher(&self) -> ::core::ops::Range<usize> {
+    0..(self.index() + 1)
   }
 }
 
@@ -171,13 +176,16 @@ pub unsafe fn switch_context() {
     panic!("switch_context - This function should only get called from kernel code!");
   }
   match CURRENT_TASK.take() {
-    Some(running) => {
+    Some(mut running) => {
       let queue_index = running.priority.index();
       if running.is_stack_overflowed() {
         ::arm::bkpt();
       }
       if running.state == State::Blocked {
-        if running.delay != 0 {
+        if running.wchan != FOREVER_CHAN {
+          SLEEP_QUEUE.enqueue(running);
+        }
+        else {
           if running.overflowed {
             OVERFLOW_DELAY_QUEUE.enqueue(running);
           }
@@ -185,17 +193,16 @@ pub unsafe fn switch_context() {
             DELAY_QUEUE.enqueue(running);
           }
         }
-        else {
-          SLEEP_QUEUE.enqueue(running);
-        }
       }
       else {
+        running.state = State::Ready;
         PRIORITY_QUEUES[queue_index].enqueue(running);
       }
 
       'main: loop {
         for i in Priority::all() {
-          if let Some(new_task) = PRIORITY_QUEUES[i].dequeue() {
+          if let Some(mut new_task) = PRIORITY_QUEUES[i].dequeue() {
+            new_task.state = State::Running;
             CURRENT_TASK = Some(new_task);
             break 'main;
           }
@@ -301,13 +308,34 @@ mod imp {
       PRIORITY_QUEUES[task.priority.index()].enqueue(task);
     }
   }
+  
+  pub fn system_tick() {
+    Timer::tick();
+    alarm_wake();
+
+    let current_priority = unsafe { 
+      match CURRENT_TASK.as_ref() {
+        Some(task) => task.priority,
+        None => panic!("system_tick - current task doesn't exist!"),
+      }
+    };
+    
+    for i in current_priority.higher() {
+      if !PRIORITY_QUEUES[i].is_empty() {
+        // Only context switch if there's another task at the same or higher priority level
+        yield_task();
+        break;
+      }
+    }
+  }
 
   /// Start running the first task in the queue
   pub fn start_first_task() {
     unsafe {
       init_first_task();
       for i in Priority::all() {
-        if let Some(task) = PRIORITY_QUEUES[i].dequeue() {
+        if let Some(mut task) = PRIORITY_QUEUES[i].dequeue() {
+          task.state = State::Running;
           CURRENT_TASK = Some(task);
           break;
         }

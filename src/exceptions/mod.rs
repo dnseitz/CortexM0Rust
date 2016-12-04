@@ -32,8 +32,7 @@ fn default_handler() {
 }
 
 fn systick_handler() {
-  timer::Timer::tick();
-  task::alarm_wake();
+  task::system_tick();
 }
 
 /// Tell OS to context switch tasks, this should be set to the lowest priority so that all other

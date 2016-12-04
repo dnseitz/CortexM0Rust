@@ -101,8 +101,16 @@ impl<T: Queueable> Queue<T> {
     *self = scratch;
   }
 
+  /// Remove all the elements from `self` and return it in a Queue struct.
+  /// O(1) algorithmic time
   pub fn remove_all(&mut self) -> Queue<T> {
     ::core::mem::replace(self, Queue::new())
+  }
+
+  /// Return true if the list is empty, false otherwise.
+  /// O(1) algorithmic time
+  pub fn is_empty(&self) -> bool {
+    self.head.is_none()
   }
 }
 
@@ -271,6 +279,24 @@ mod tests {
     assert!(old.dequeue().is_none());
 
     assert!(list.dequeue().is_none());
+  }
 
+  #[test]
+  fn is_empty() {
+    let mut list = Queue::new();
+
+    assert!(list.is_empty());
+
+    list.enqueue(Box::new(Node::new(1)));
+    list.enqueue(Box::new(Node::new(2)));
+
+    assert!(!list.is_empty());
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert!(!list.is_empty());
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert!(list.is_empty());
+    assert!(list.dequeue().is_none());
+    assert!(list.is_empty());
   }
 }

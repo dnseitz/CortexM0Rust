@@ -42,7 +42,7 @@ impl Timer {
       let start: usize = v_msec.load();
       let mut remaining = *v_msec - start;
       while remaining < ms {
-        task::sleep_for(&TIME as *const _ as usize, ms - remaining);
+        task::sleep_for(task::FOREVER_CHAN, ms - remaining);
         remaining = *v_msec - start;
       }
     }

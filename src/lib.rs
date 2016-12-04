@@ -67,11 +67,13 @@ pub fn start() -> ! {
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
   //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
-  task::new_task(mutex_task_1, 512, task::Priority::Critical, "first mutex task");
-  task::new_task(mutex_task_2, 512, task::Priority::Critical, "second mutex task");
+  task::new_task(mutex_task_1, 1024, task::Priority::Critical, "first mutex task");
+  task::new_task(mutex_task_2, 1024, task::Priority::Critical, "second mutex task");
   //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
   //task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
   //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
+  //task::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
+  //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
   task::start_first_task();
 
   loop { unsafe { arm::bkpt() }; }
@@ -89,20 +91,16 @@ fn delay_task() {
 
 fn mutex_task_1() {
   loop {
-    task::yield_task();
     let mut guard = TEST_MUTEX.lock();
-    *guard = *guard + 1;
-    task::yield_task();
+    *guard = *guard + 0x1;
     drop(guard);
   }
 }
 
 fn mutex_task_2() {
   loop {
-    task::yield_task();
     let mut guard = TEST_MUTEX.lock();
-    *guard = *guard + 10;
-    task::yield_task();
+    *guard = *guard + 0x10000;
     drop(guard);
   }
 }
@@ -166,6 +164,20 @@ fn frequency_task_2() {
     if delay > 750 {
       delay = 250;
     }
+  }
+}
+
+fn preempt_task_1() {
+  let mut value: usize = 0;
+  loop {
+    value += 1;
+  }
+}
+
+fn preempt_task_2() {
+  let mut value: usize = !0;
+  loop {
+    value -= 1;
   }
 }
 
