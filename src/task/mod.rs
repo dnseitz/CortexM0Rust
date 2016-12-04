@@ -164,6 +164,12 @@ impl Queueable for TaskControl {
   fn set_next(&mut self, next: Option<Box<Self>>) {
     self.next = next;
   }
+  fn next(&self) -> Option<&Box<Self>> {
+    self.next.as_ref()
+  }
+  fn next_mut(&mut self) -> Option<&mut Box<Self>> {
+    self.next.as_mut()
+  }
 }
 
 /// Select a new task to run and switch its context, this function MUST only be called from the

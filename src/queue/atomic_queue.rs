@@ -35,6 +35,14 @@ impl<T: Queueable> AtomicQueue<T> {
     }
   }
 
+  /*
+  pub fn sorted_insert<F: Fn(&T, &T) -> bool>(&self, elem: Box<T>, sort: F) {
+    atomic! {
+      self.get_internal_mut().sorted_insert(elem, sort);
+    }
+  }
+  */
+
   pub fn remove<F: Fn(&T) -> bool>(&self, predicate: F) -> Queue<T> {
     atomic! {
       self.get_internal_mut().remove(predicate)

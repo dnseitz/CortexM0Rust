@@ -54,6 +54,33 @@ impl<T: Queueable> Queue<T> {
       None => None,
     }
   }
+
+  /// Insert an item into the queue in its sorted order. The queue MUST be sorted already.
+  /// O(n) algorithmic time
+  // TODO: Private for now until I figure out if I want to have this method or not
+  fn sorted_insert<F: Fn(&T, &T) -> bool>(&mut self, mut elem: Box<T>, sort: F) {
+    if self.head.is_none() || sort(&*elem, &*self.head.as_ref().unwrap()) {
+      elem.set_next(self.head.take());
+      self.head = Some(elem);
+      return;
+    }
+    let mut current = self.head.as_mut();
+    while let Some(node) = current.take() {
+      if node.next().is_none() || sort(&*elem, &*node.next().unwrap()) {
+        current = Some(node);
+        break;
+      }
+      current = node.next_mut();
+    }
+
+    if let Some(node) = current.take() {
+      if node.next().is_none() {
+        self.tail = &mut *elem;
+      }
+      elem.set_next(node.take_next());
+      node.set_next(Some(elem));
+    }
+  }
   
   /// Remove all elements matching `predicate` and return them in a new queue
   /// O(n) algorithmic time
@@ -93,12 +120,11 @@ impl<T: Queueable> Queue<T> {
   /// Modify all the elements of the queue with the block passed in.
   /// O(n) algorithmic time
   pub fn modify_all<F: Fn(&mut T)>(&mut self, block: F) {
-    let mut scratch = Queue::new();
-    while let Some(mut node) = self.dequeue() {
+    let mut current = self.head.as_mut();
+    while let Some(node) = current {
       block(&mut *node);
-      scratch.enqueue(node);
+      current = node.next_mut();
     }
-    *self = scratch;
   }
 
   /// Remove all the elements from `self` and return it in a Queue struct.
@@ -135,6 +161,14 @@ impl<T> Queueable for Node<T> {
 
   fn set_next(&mut self, next: Option<Box<Self>>) {
     self.next = next;
+  }
+
+  fn next(&self) -> Option<&Box<Self>> {
+    self.next.as_ref()
+  }
+
+  fn next_mut(&mut self) -> Option<&mut Box<Self>> {
+    self.next.as_mut()
   }
 }
 
@@ -298,5 +332,77 @@ mod tests {
     assert!(list.is_empty());
     assert!(list.dequeue().is_none());
     assert!(list.is_empty());
+  }
+
+  #[test]
+  fn sorted_insert_unsorted() {
+    let mut list: Queue<Node<usize>> = Queue::new();
+
+    let sort = &|new: &Node<usize>, old: &Node<usize>| new.data <= old.data;
+
+    list.sorted_insert(Box::new(Node::new(4)), sort);
+    list.sorted_insert(Box::new(Node::new(1)), sort);
+    list.sorted_insert(Box::new(Node::new(2)), sort);
+    list.sorted_insert(Box::new(Node::new(3)), sort);
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(4));
+    assert!(list.dequeue().is_none());
+  }
+
+  #[test]
+  fn sorted_insert_unsorted_2() {
+    let mut list: Queue<Node<usize>> = Queue::new();
+
+    let sort = &|new: &Node<usize>, old: &Node<usize>| new.data <= old.data;
+
+    list.sorted_insert(Box::new(Node::new(3)), sort);
+    list.sorted_insert(Box::new(Node::new(4)), sort);
+    list.sorted_insert(Box::new(Node::new(2)), sort);
+    list.sorted_insert(Box::new(Node::new(1)), sort);
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(4));
+    assert!(list.dequeue().is_none());
+  }
+
+  #[test]
+  fn sorted_insert_reverse_sorted() {
+    let mut list: Queue<Node<usize>> = Queue::new();
+
+    let sort = &|new: &Node<usize>, old: &Node<usize>| new.data <= old.data;
+
+    list.sorted_insert(Box::new(Node::new(4)), sort);
+    list.sorted_insert(Box::new(Node::new(3)), sort);
+    list.sorted_insert(Box::new(Node::new(2)), sort);
+    list.sorted_insert(Box::new(Node::new(1)), sort);
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(4));
+    assert!(list.dequeue().is_none());
+  }
+
+  #[test]
+  fn sorted_insert_sorted() {
+    let mut list: Queue<Node<usize>> = Queue::new();
+
+    let sort = &|new: &Node<usize>, old: &Node<usize>| new.data <= old.data;
+
+    list.sorted_insert(Box::new(Node::new(1)), sort);
+    list.sorted_insert(Box::new(Node::new(2)), sort);
+    list.sorted_insert(Box::new(Node::new(3)), sort);
+    list.sorted_insert(Box::new(Node::new(4)), sort);
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(4));
+    assert!(list.dequeue().is_none());
   }
 }
