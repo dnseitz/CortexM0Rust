@@ -4,6 +4,14 @@
 // Created by Daniel Seitz on 11/30/16
 
 #[no_mangle]
+pub unsafe extern fn __aeabi_memclr4(dest: *mut u32, mut n: usize) {
+  while n > 0 {
+    *dest = 0;
+    n -= 1;
+  }
+}
+
+#[no_mangle]
 pub unsafe extern fn __aeabi_lmul(num1: u64, num2: u64) -> u64 {
   let mut res = 0;
   let (higher, mut lower) = if num1 > num2 { (num1, num2) } else { (num2, num1) };

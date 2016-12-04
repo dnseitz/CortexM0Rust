@@ -14,14 +14,19 @@ alloc = { path = "libs/alloc" }
 collections = { path = "libs/collections" }
 
 [profile.dev]
-opt-level = 1
+opt-level = 0
 debug = true
 debug-assertions = true
+lto = false
 codegen-units = 1
 panic = "abort"
 
 [profile.release]
-opt-level = 2
+opt-level = 3
+debug = false
+debug-assertions = false
+lto = true
+codegen-units = 1
 panic = "abort"
 
 [profile.test]

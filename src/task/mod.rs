@@ -55,11 +55,11 @@ impl Priority {
 
 #[derive(Copy, Clone, PartialEq)]
 enum State {
+  Embryo,
   Ready,
   Running,
   Blocked,
   Suspended,
-  Embryo,
 }
 
 #[repr(C)]
@@ -68,14 +68,14 @@ pub struct TaskControl {
   stack: usize, /* stack pointer MUST be first field */
   stack_base: usize,
   stack_depth: usize,
-  state: State,
   tid: usize,
-  priority: Priority,
   name: &'static str,
   valid: usize,
   wchan: usize,
   delay: usize,
   overflowed: bool,
+  priority: Priority,
+  state: State,
   next: Option<Box<TaskControl>>,
 }
 
@@ -92,14 +92,14 @@ impl TaskControl {
       stack: stack + depth,
       stack_base: stack,
       stack_depth: depth,
-      state: State::Embryo,
       tid: tid,
-      priority: Priority::Critical,
       name: name,
       valid: VALID_TASK + (tid & 0xFF),
       wchan: 0,
       delay: 0,
       overflowed: false,
+      priority: Priority::Critical,
+      state: State::Embryo,
       next: None,
     }
   }
@@ -109,14 +109,14 @@ impl TaskControl {
       stack: 0,
       stack_base: 0,
       stack_depth: 0,
-      state: State::Embryo,
       tid: !0,
-      priority: Priority::Low,
       name: name,
       valid: INVALID_TASK,
       wchan: 0,
       delay: 0,
       overflowed: false,
+      priority: Priority::Low,
+      state: State::Embryo,
       next: None,
     }
   }
@@ -352,6 +352,7 @@ mod priv_imp {
   use alloc::boxed::Box;
 
   pub fn is_kernel_running() -> bool {
+    // FIXME: When compiling for opt-level 2 or higher, this entire function gets optimized away...
     unsafe {
       const PSP: usize = 1 << 1;
       let mut stack_mask: usize = 0;

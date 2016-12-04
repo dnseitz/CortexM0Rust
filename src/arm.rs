@@ -31,6 +31,16 @@ mod imp {
   pub unsafe fn wfi() {
     asm!("wfi");
   }
+
+  pub unsafe fn get_control() -> usize {
+    let result: usize;
+    asm!("mrs $0, CONTROL" 
+      : "=r"(result) 
+      : /* no inputs */ 
+      : /* no clobbers */ 
+      : "volatile");
+    result
+  }
 }
 
 #[cfg(not(target_arch="arm"))]

@@ -39,14 +39,16 @@ use peripheral::rcc;
 use peripheral::systick;
 use sync::Mutex;
 
-pub use math::{__aeabi_uidiv, __aeabi_uidivmod, __aeabi_lmul};
+pub use math::{__aeabi_uidiv, __aeabi_uidivmod, __aeabi_lmul, __aeabi_memclr4};
 #[cfg(not(test))]
 pub use vector_table::RESET;
 #[cfg(not(test))]
 pub use exceptions::EXCEPTIONS;
 pub use task::{CURRENT_TASK, switch_context};
 
-static TEST_MUTEX: Mutex<u32> = Mutex::new(0);
+#[no_mangle]
+// FIXME: Unmangle and make private again
+pub static TEST_MUTEX: Mutex<u32> = Mutex::new(0);
 
 #[no_mangle]
 pub fn start() -> ! {
@@ -61,18 +63,15 @@ pub fn start() -> ! {
   init_clock();
   init_ticks();
 
-  let mut guard = TEST_MUTEX.lock();
-  *guard = 5;
-  drop(guard);
 
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
   //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
-  //task::new_task(mutex_task_1, 512, task::Priority::Critical, "first mutex task");
-  //task::new_task(mutex_task_2, 512, task::Priority::Critical, "second mutex task");
+  task::new_task(mutex_task_1, 512, task::Priority::Critical, "first mutex task");
+  task::new_task(mutex_task_2, 512, task::Priority::Critical, "second mutex task");
   //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
-  task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
-  task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
+  //task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
+  //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
   task::start_first_task();
 
   loop { unsafe { arm::bkpt() }; }
