@@ -354,7 +354,7 @@ mod priv_imp {
   pub fn is_kernel_running() -> bool {
     unsafe {
       const PSP: usize = 1 << 1;
-      let stack_mask: usize;
+      let mut stack_mask: usize = 0;
       #[cfg(target_arch="arm")]
       asm!("mrs $0, CONTROL\n" /* get the stack control mask */
         : "=r"(stack_mask)

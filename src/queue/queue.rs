@@ -59,26 +59,19 @@ impl<T: Queueable> Queue<T> {
   /// O(n) algorithmic time
   pub fn remove<F: Fn(&T) -> bool>(&mut self, predicate: F) -> Queue<T> {
     let mut matching = Queue::new();
-    let old_tail = self.tail;
+    let mut not_matching = Queue::new();
 
     while let Some(mut head) = self.head.take() {
       self.head = head.take_next();
-      if self.head.is_none() {
-        self.tail = ::core::ptr::null_mut();
-      }
 
       if predicate(&head) {
         matching.enqueue(head);
       }
       else {
-        self.enqueue(head);
-      }
-      if let Some(head) = self.head.as_mut() {
-        if &mut **head as *mut _ == old_tail {
-          break;
-        }
+        not_matching.enqueue(head);
       }
     }
+    *self = not_matching;
     matching
   }
   
@@ -150,7 +143,7 @@ mod tests {
   }
 
   #[test]
-  fn basics() {
+  fn smoke() {
     let mut list = Queue::new();
 
     // Populate list
@@ -159,19 +152,19 @@ mod tests {
     list.enqueue(Box::new(Node::new(3)));
 
     // Check normal removal
-    assert_eq!(list.dequeue().unwrap().data, 1);
-    assert_eq!(list.dequeue().unwrap().data, 2);
+    assert_eq!(list.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
 
     // Push some more just to make sure nothing's corrupted
     list.enqueue(Box::new(Node::new(4)));
     list.enqueue(Box::new(Node::new(5)));
 
     // Check normal removal
-    assert_eq!(list.dequeue().unwrap().data, 3);
-    assert_eq!(list.dequeue().unwrap().data, 4);
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(4));
 
     // Check exhaustion
-    assert_eq!(list.dequeue().unwrap().data, 5);
+    assert_eq!(list.dequeue().map(|n| n.data), Some(5));
     assert!(list.dequeue().is_none());
 
     // Check the exhaustion case fixed the pointer right
@@ -179,8 +172,8 @@ mod tests {
     list.enqueue(Box::new(Node::new(7)));
 
     // Check normal removal
-    assert_eq!(list.dequeue().unwrap().data, 6);
-    assert_eq!(list.dequeue().unwrap().data, 7);
+    assert_eq!(list.dequeue().map(|n| n.data), Some(6));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(7));
     assert!(list.dequeue().is_none());
   }
 
@@ -198,9 +191,15 @@ mod tests {
     let predicate = |task: &Node<usize>| task.data == 1;
 
     let mut removed = list.remove(predicate);
-    assert_eq!(removed.dequeue().unwrap().data, 1);
-    assert_eq!(removed.dequeue().unwrap().data, 1);
+    assert_eq!(removed.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(removed.dequeue().map(|n| n.data), Some(1));
     assert!(removed.dequeue().is_none());
+
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(3));
+    assert!(list.dequeue().is_none());
   }
 
   #[test]
@@ -215,10 +214,10 @@ mod tests {
 
     list1.append(list2);
 
-    assert_eq!(list1.dequeue().unwrap().data, 1);
-    assert_eq!(list1.dequeue().unwrap().data, 2);
-    assert_eq!(list1.dequeue().unwrap().data, 3);
-    assert_eq!(list1.dequeue().unwrap().data, 4);
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(3));
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(4));
 
     assert!(list1.dequeue().is_none());
   }
@@ -233,8 +232,8 @@ mod tests {
 
     list1.append(list2);
 
-    assert_eq!(list1.dequeue().unwrap().data, 1);
-    assert_eq!(list1.dequeue().unwrap().data, 2);
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(list1.dequeue().map(|n| n.data), Some(2));
 
     assert!(list1.dequeue().is_none());
   }
@@ -249,9 +248,9 @@ mod tests {
 
     list.modify_all(|task: &mut Node<usize>| task.data *= 10);
 
-    assert_eq!(list.dequeue().unwrap().data, 10);
-    assert_eq!(list.dequeue().unwrap().data, 20);
-    assert_eq!(list.dequeue().unwrap().data, 30);
+    assert_eq!(list.dequeue().map(|n| n.data), Some(10));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(20));
+    assert_eq!(list.dequeue().map(|n| n.data), Some(30));
 
     assert!(list.dequeue().is_none());
   }
@@ -266,9 +265,9 @@ mod tests {
 
     let mut old = list.remove_all();
 
-    assert_eq!(old.dequeue().unwrap().data, 1);
-    assert_eq!(old.dequeue().unwrap().data, 2);
-    assert_eq!(old.dequeue().unwrap().data, 3);
+    assert_eq!(old.dequeue().map(|n| n.data), Some(1));
+    assert_eq!(old.dequeue().map(|n| n.data), Some(2));
+    assert_eq!(old.dequeue().map(|n| n.data), Some(3));
     assert!(old.dequeue().is_none());
 
     assert!(list.dequeue().is_none());

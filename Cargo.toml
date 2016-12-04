@@ -17,15 +17,19 @@ collections = { path = "libs/collections" }
 opt-level = 1
 debug = true
 debug-assertions = true
+codegen-units = 1
 panic = "abort"
 
 [profile.release]
 panic = "abort"
 
-[features]
-default = ["rcc", "gpio", "systick"]
-rcc = []
-gpio = []
-systick = []
+[profile.test]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 1
+panic = "unwind"
 
 [workspace]
