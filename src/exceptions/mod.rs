@@ -3,7 +3,6 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-use super::timer;
 use arm::bkpt;
 use task;
 

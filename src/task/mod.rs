@@ -385,18 +385,19 @@ mod priv_imp {
   use super::{INIT_TASK, TaskControl, Priority};
   use alloc::boxed::Box;
 
+  const MAIN_STACK: usize = 0b0;
+  const PROGRAM_STACK: usize = 0b10;
+
   pub fn is_kernel_running() -> bool {
-    // FIXME: When compiling for opt-level 2 or higher, this entire function gets optimized away...
     unsafe {
-      const PSP: usize = 1 << 1;
-      let mut stack_mask: usize = 0;
+      let stack_mask: usize;
       #[cfg(target_arch="arm")]
       asm!("mrs $0, CONTROL\n" /* get the stack control mask */
         : "=r"(stack_mask)
         : /* no inputs */
         : /* no clobbers */
         : "volatile");
-      stack_mask & PSP == 0
+      stack_mask == MAIN_STACK
     }
   }
 

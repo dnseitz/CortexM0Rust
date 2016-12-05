@@ -90,17 +90,40 @@ fn delay_task() {
 }
 
 fn mutex_task_1() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  let mut value = 0;
   loop {
+    value += 0x1;
+    value = value & 0xFFFF;
     let mut guard = TEST_MUTEX.lock();
-    *guard = *guard + 0x1;
+    if value == 0xFFFF {
+      pb3.set();
+      timer::Timer::delay_ms(2000);
+      pb3.reset();
+    }
+    *guard = *guard & 0xFFFF0000;
+    *guard = *guard | value;
     drop(guard);
   }
 }
 
 fn mutex_task_2() {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  let mut value = 0;
   loop {
+    value += 0x10000;
+    value = value & 0xFFFF0000;
     let mut guard = TEST_MUTEX.lock();
-    *guard = *guard + 0x10000;
+    if value == 0xFFFF0000 {
+      for _ in 0..10 {
+        pb3.set();
+        timer::Timer::delay_ms(100);
+        pb3.reset();
+        timer::Timer::delay_ms(100);
+      }
+    }
+    *guard = *guard & 0xFFFF;
+    *guard = *guard | value;
     drop(guard);
   }
 }
@@ -191,7 +214,7 @@ mod vector_table {
 #[cfg(not(test))]
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[cfg(not(test))]
-#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{}}
+#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::bkpt();}}}
 
 fn init_data_segment() {
   unsafe {
