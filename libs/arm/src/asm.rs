@@ -59,4 +59,7 @@ mod imp {
 
   #[inline(always)]
   pub unsafe fn wfi() {}
+
+  #[inline(always)]
+  pub unsafe fn get_control() -> usize { 0 }
 }

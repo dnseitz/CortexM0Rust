@@ -82,3 +82,9 @@ impl<T> AtomicQueue<T> {
     unsafe { &mut *self.internal.get() }
   }
 }
+
+impl<T> Default for AtomicQueue<T> {
+  fn default() -> Self {
+    AtomicQueue::new()
+  }
+}

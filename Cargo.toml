@@ -12,6 +12,7 @@ path = "libs/heap/bump_allocator"
 [target.cortex-m0.dependencies]
 alloc = { path = "libs/alloc" }
 collections = { path = "libs/collections" }
+arm = { path = "libs/arm" }
 
 [profile.dev]
 opt-level = 0

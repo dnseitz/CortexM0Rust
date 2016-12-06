@@ -14,9 +14,14 @@ name = "altos_rust"
 version = "0.1.0"
 dependencies = [
  "alloc 0.1.0",
+ "arm 0.1.0",
  "bump_allocator 0.1.0",
  "collections 0.1.0",
 ]
+
+[[package]]
+name = "arm"
+version = "0.1.0"
 
 [[package]]
 name = "bump_allocator"

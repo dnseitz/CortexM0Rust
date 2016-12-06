@@ -12,22 +12,21 @@
 #![feature(collections)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
 #![no_std]
-//#![allow(dead_code)]
+#![allow(dead_code)]
 
 #[cfg(not(test))]
 extern crate bump_allocator;
 extern crate alloc;
 #[macro_use]
 extern crate collections;
+extern crate arm;
 
 #[macro_use]
 mod atomic;
 mod exceptions;
 mod peripheral;
-mod math;
 mod timer;
 mod volatile;
-mod arm;
 mod interrupt;
 mod task;
 mod system_control;
@@ -39,7 +38,6 @@ use peripheral::rcc;
 use peripheral::systick;
 use sync::Mutex;
 
-pub use math::{__aeabi_uidiv, __aeabi_uidivmod, __aeabi_lmul, __aeabi_memclr4};
 #[cfg(not(test))]
 pub use vector_table::RESET;
 #[cfg(not(test))]
@@ -76,7 +74,7 @@ pub fn start() -> ! {
   //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
   task::start_first_task();
 
-  loop { unsafe { arm::bkpt() }; }
+  loop { unsafe { arm::asm::bkpt() }; }
 }
 
 fn delay_task() {
@@ -214,7 +212,7 @@ mod vector_table {
 #[cfg(not(test))]
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[cfg(not(test))]
-#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::bkpt();}}}
+#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
 
 fn init_data_segment() {
   unsafe {

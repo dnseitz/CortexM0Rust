@@ -3,7 +3,7 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-use arm::bkpt;
+use arm::asm::bkpt;
 use task;
 
 #[link_section = ".exceptions"]

@@ -171,7 +171,7 @@ pub unsafe fn switch_context() {
     Some(mut running) => {
       let queue_index = running.priority;
       if running.is_stack_overflowed() {
-        ::arm::bkpt();
+        ::arm::asm::bkpt();
       }
       if running.state == State::Blocked {
         if running.wchan != FOREVER_CHAN {
@@ -208,7 +208,7 @@ pub unsafe fn switch_context() {
 
 fn exit_error() -> ! {
   unsafe {
-    ::arm::bkpt();
+    ::arm::asm::bkpt();
     loop{}
   }
 }

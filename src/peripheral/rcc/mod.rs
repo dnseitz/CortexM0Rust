@@ -7,7 +7,7 @@
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 
 use super::Control;
-use arm::dmb;
+use arm::asm::dmb;
 use volatile::Volatile;
 pub use self::clock_control::Clock;
 pub use self::enable::Peripheral;
