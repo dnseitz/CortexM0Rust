@@ -10,11 +10,32 @@ mod sorted_list;
 pub use self::queue::*;
 pub use self::atomic_queue::*;
 use alloc::boxed::Box;
+use core::ops::{Deref, DerefMut};
 
-pub trait Queueable {
-  fn set_next(&mut self, Option<Box<Self>>);
-  fn take_next(&mut self) -> Option<Box<Self>>;
-  fn next(&self) -> Option<&Box<Self>>;
-  fn next_mut(&mut self) -> Option<&mut Box<Self>>;
+#[repr(C)]
+pub struct Node<T> {
+  data: T,
+  next: Option<Box<Node<T>>>,
 }
 
+impl<T> Node<T> {
+  pub fn new(data: T) -> Self {
+    Node { 
+      data: data,
+      next: None,
+    }
+  }
+}
+
+impl<T> Deref for Node<T> {
+  type Target = T;
+  fn deref(&self) -> &Self::Target {
+    &self.data
+  }
+}
+
+impl<T> DerefMut for Node<T> {
+  fn deref_mut(&mut self) -> &mut Self::Target {
+    &mut self.data
+  }
+}

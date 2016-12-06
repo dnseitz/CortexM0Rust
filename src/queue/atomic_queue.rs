@@ -3,18 +3,18 @@
 //
 // Created by Daniel Seitz on 12/3/16
 //! An atomic wrapper around the Queue struct. Able to be synchronized between threads.
-use queue::{Queue, Queueable};
+use queue::{Queue, Node};
 use alloc::boxed::Box;
 use core::cell::UnsafeCell;
 
-pub struct AtomicQueue<T: Queueable> {
+pub struct AtomicQueue<T> {
   internal: UnsafeCell<Queue<T>>,
 }
 
-unsafe impl<T: Send + Queueable> Sync for AtomicQueue<T> {}
-unsafe impl<T: Send + Queueable> Send for AtomicQueue<T> {}
+unsafe impl<T: Send> Sync for AtomicQueue<T> {}
+unsafe impl<T: Send> Send for AtomicQueue<T> {}
 
-impl<T: Queueable> AtomicQueue<T> {
+impl<T> AtomicQueue<T> {
   pub const fn new() -> Self {
     AtomicQueue { internal: UnsafeCell::new(Queue::new()) }
   }
@@ -23,13 +23,13 @@ impl<T: Queueable> AtomicQueue<T> {
     AtomicQueue { internal: UnsafeCell::new(queue) }
   }
 
-  pub fn enqueue(&self, elem: Box<T>) {
+  pub fn enqueue(&self, elem: Box<Node<T>>) {
     atomic! {
       self.get_internal_mut().enqueue(elem);
     }
   }
 
-  pub fn dequeue(&self) -> Option<Box<T>> {
+  pub fn dequeue(&self) -> Option<Box<Node<T>>> {
     atomic! {
       self.get_internal_mut().dequeue()
     }
@@ -55,6 +55,7 @@ impl<T: Queueable> AtomicQueue<T> {
     }
   }
 
+  #[allow(deprecated)]
   pub fn modify_all<F: Fn(&mut T)>(&self, block: F) {
     atomic! {
       self.get_internal_mut().modify_all(block);
