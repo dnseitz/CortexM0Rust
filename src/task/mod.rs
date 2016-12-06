@@ -89,13 +89,13 @@ pub struct TaskControl {
 unsafe impl Send for TaskControl {}
 
 impl TaskControl {
-  fn new(depth: usize, priority: Priority, name: &'static str) -> Self {
+  fn new(code: fn(), depth: usize, priority: Priority, name: &'static str) -> Self {
     let stack_mem: Vec<u8> = Vec::with_capacity(depth);
     let stack = stack_mem.as_ptr() as usize;
     // Don't free the heap space
     ::core::mem::forget(stack_mem);
     let tid = tid::fetch_next_tid();
-    TaskControl {
+    let mut task = TaskControl {
       stack: stack + depth,
       stack_base: stack,
       stack_depth: depth,
@@ -107,7 +107,9 @@ impl TaskControl {
       overflowed: false,
       priority: priority,
       state: State::Embryo,
-    }
+    };
+    task.initialize(code);
+    task
   }
 
   const fn uninitialized(name: &'static str) -> Self {
@@ -235,8 +237,7 @@ mod imp {
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
   /// kernel will panic with an out of memory (oom) error.
   pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
-    let mut task = Box::new(Node::new(TaskControl::new(stack_depth, priority, name)));
-    task.initialize(code);
+    let task = Box::new(Node::new(TaskControl::new(code, stack_depth, priority, name)));
     let handle = TaskHandle::new(&**task);
 
     PRIORITY_QUEUES[task.priority].enqueue(task); 
@@ -399,8 +400,7 @@ mod priv_imp {
   }
 
   pub fn init_idle_task() {
-    let mut task = TaskControl::new(256, Priority::Idle, "idle");
-    task.initialize(init_task_code);
+    let task = TaskControl::new(init_task_code, 256, Priority::Idle, "idle");
 
     PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
   }
