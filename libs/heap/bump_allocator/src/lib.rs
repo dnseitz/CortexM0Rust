@@ -9,23 +9,8 @@
 static mut BUMP_ALLOCATOR: BumpAllocator = BumpAllocator::new();
 
 /// Call this before doing any heap allocation
-pub fn init_heap() {
-  #[cfg(target_arch="arm")]
-  unsafe {
-    let heap_start: usize;
-    let heap_size: usize;
-    asm!(
-      concat!(
-        "ldr r0, =_heap_start\n",
-        "ldr r1, =_heap_end\n",
-
-        "subs r2, r1, r0\n")
-        : "={r0}"(heap_start), "={r2}"(heap_size)
-        : /* no inputs */
-        : "r0", "r1", "r2"
-    );
-    BUMP_ALLOCATOR.init(heap_start, heap_size);
-  }
+pub fn init_heap(heap_start: usize, heap_size: usize) {
+  unsafe { BUMP_ALLOCATOR.init(heap_start, heap_size) };
 }
 
 struct BumpAllocator {
@@ -52,17 +37,42 @@ impl BumpAllocator {
   }
 
   /// Allocates a block of memory with the given size and alignment.
+  #[inline(never)]
   fn allocate(&mut self, size: usize, align: usize) -> Option<*mut u8> {
+    // FIXME: Hacky way to ensure thread safety, only works on arm single threaded processor, come
+    // back and fix this in the future if we want programs to be able to allocate heap memory at
+    // runtime, or just use a different allocator
+    let primask: usize;
+    #[cfg(target_arch="arm")]
+    unsafe {
+      asm!(
+        concat!(
+          "mrs $0, PRIMASK\n",
+          "cpsid i\n")
+        : "=r"(primask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+    }
     let alloc_start = align_up(self.next, align);
     let alloc_end = alloc_start.saturating_add(size);
 
-    if alloc_end <= self.heap_start + self.heap_size {
+    let result = if alloc_end <= self.heap_start + self.heap_size {
       self.next = alloc_end;
       Some(alloc_start as *mut u8)
     }
     else {
       None
+    };
+    #[cfg(target_arch="arm")]
+    unsafe {
+      asm!("msr PRIMASK, $0"
+        : /* no outputs */
+        : "r"(primask)
+        : /* no clobbers */
+        : "volatile");
     }
+    result
   }
 }
 

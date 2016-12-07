@@ -37,6 +37,7 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 use sync::Mutex;
+use task::{Args, ArgsBuilder, Empty};
 
 #[cfg(not(test))]
 pub use vector_table::RESET;
@@ -53,25 +54,30 @@ pub fn start() -> ! {
   // TODO: set pendsv and systick interrupts to lowest priority
   init_data_segment();
   init_bss_segment();
-
-  #[cfg(not(test))]
-  bump_allocator::init_heap();
-
+  init_heap();
   init_led();
   init_clock();
   init_ticks();
 
+  /*
+  let mut args1 = ArgsBuilder::new(1);
+  args1 = args1.add_arg(0xAABBCCDDusize);
+  */
+
+  let mut args2 = ArgsBuilder::new(2);
+  args2 = args2.add_arg(100).add_arg(1);
 
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
   //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
-  task::new_task(mutex_task_1, 1024, task::Priority::Critical, "first mutex task");
-  task::new_task(mutex_task_2, 1024, task::Priority::Critical, "second mutex task");
+  //task::new_task(mutex_task_1, ArgsBuilder::empty(), 1024, task::Priority::Critical, "first mutex task");
+  //task::new_task(mutex_task_2, ArgsBuilder::empty(), 1024, task::Priority::Critical, "second mutex task");
   //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
   //task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
   //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
   //task::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
   //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
+  task::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
   task::start_first_task();
 
   loop { unsafe { arm::asm::bkpt() }; }
@@ -87,7 +93,7 @@ fn delay_task() {
   }
 }
 
-fn mutex_task_1() {
+fn mutex_task_1(_args: &Args<Empty>) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   let mut value = 0;
   loop {
@@ -105,7 +111,7 @@ fn mutex_task_1() {
   }
 }
 
-fn mutex_task_2() {
+fn mutex_task_2(_args: &Args<Empty>) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   let mut value = 0;
   loop {
@@ -202,6 +208,18 @@ fn preempt_task_2() {
   }
 }
 
+fn arg_task(args: &Args<usize>) {
+  let ref rate = args[0];
+  let ref multiplier = args[1];
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(*rate * *multiplier);
+    pb3.reset();
+    timer::Timer::delay_ms(*rate * *multiplier);
+  }
+}
+
 mod vector_table {
   #[cfg(not(test))]
   #[link_section = ".reset"]
@@ -215,8 +233,8 @@ mod vector_table {
 #[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
 
 fn init_data_segment() {
+  #[cfg(target_arch="arm")]
   unsafe {
-    #![cfg(target_arch="arm")]
     asm!(
       concat!(
         "ldr r1, =_sidata\n", /* start of data in flash */
@@ -239,8 +257,8 @@ fn init_data_segment() {
 }
 
 fn init_bss_segment() {
+  #[cfg(target_arch="arm")]
   unsafe {
-    #![cfg(target_arch="arm")]
     asm!(
       concat!(
         "movs r0, #0\n", /* store zero for later */
@@ -258,6 +276,26 @@ fn init_bss_segment() {
     : "r0", "r1", "r2" /* clobbers */
     : "volatile");
   }
+}
+
+fn init_heap() {
+  #[cfg(target_arch="arm")]
+  unsafe {
+    let heap_start: usize;
+    let heap_size: usize;
+    asm!(
+      concat!(
+        "ldr r0, =_heap_start\n",
+        "ldr r1, =_heap_end\n",
+
+        "subs r2, r1, r0\n")
+        : "={r0}"(heap_start), "={r2}"(heap_size)
+        : /* no inputs */
+        : "r0", "r1", "r2"
+    );
+    bump_allocator::init_heap(heap_start, heap_size);
+  }
+
 }
 
 fn init_led() {

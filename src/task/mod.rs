@@ -3,6 +3,9 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
+mod args;
+
+pub use self::args::{ArgsBuilder, Args, Empty};
 use volatile::Volatile;
 use queue::{AtomicQueue, Node};
 use alloc::boxed::Box;
@@ -10,6 +13,7 @@ use collections::Vec;
 pub use self::imp::*;
 use self::priv_imp::*;
 use core::ops::Index;
+use core::any::Any;
 
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
@@ -89,7 +93,7 @@ pub struct TaskControl {
 unsafe impl Send for TaskControl {}
 
 impl TaskControl {
-  fn new(code: fn(), depth: usize, priority: Priority, name: &'static str) -> Self {
+  fn new<T: Any>(code: fn(&Args<T>), args: Args<T>, depth: usize, priority: Priority, name: &'static str) -> Self {
     let stack_mem: Vec<u8> = Vec::with_capacity(depth);
     let stack = stack_mem.as_ptr() as usize;
     // Don't free the heap space
@@ -108,7 +112,7 @@ impl TaskControl {
       priority: priority,
       state: State::Embryo,
     };
-    task.initialize(code);
+    task.initialize(code, args);
     task
   }
 
@@ -130,8 +134,13 @@ impl TaskControl {
 
   /// This initializes the task's stack. This method MUST only be called once, calling it more than
   /// once could at best waste some stack space and at worst corrupt an active stack.
-  fn initialize(&mut self, code: fn()) {
+  fn initialize<T: Any>(&mut self, code: fn(&Args<T>), args: Args<T>) {
     const INITIAL_XPSR: usize = 0x0100_0000;
+    // The Args struct is stored right above the stack
+    let args_mem: Box<Args<T>> = Box::new(args);
+    let args_ptr = args_mem.as_ptr();
+    // Don't deallocate arguments
+    ::core::mem::forget(args_mem);
     unsafe {
       let mut stack_mut = Volatile::new(self.stack as *const usize);
       // Offset added to account for way MCU uses stack on entry/exit of interrupts
@@ -142,7 +151,7 @@ impl TaskControl {
       stack_mut -= 4;
       stack_mut.store(exit_error as usize); /* LR */
       stack_mut -= 20; /* R12, R3, R2, R1 */
-      // *stack_mut = params; /* R0 */
+      stack_mut.store(args_ptr as usize); /* R0 */
       stack_mut -= 32; /* R11..R4 */
       self.stack = stack_mut.as_ptr() as usize;
     }
@@ -225,23 +234,29 @@ mod tid {
 }
 
 mod imp {
-  use super::{SLEEP_QUEUE, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES, CURRENT_TASK};
+  use super::{SLEEP_QUEUE, PRIORITY_QUEUES, CURRENT_TASK};
   use super::{State, Priority, TaskControl, TaskHandle};
   use super::priv_imp::*;
   use system_control;
   use alloc::boxed::Box;
   use queue::{Queue, Node};
   use timer::Timer;
+  use super::args::Args;
+  use core::any::Any;
 
   /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
   /// kernel will panic with an out of memory (oom) error.
-  pub fn new_task(code: fn(), stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
-    let task = Box::new(Node::new(TaskControl::new(code, stack_depth, priority, name)));
-    let handle = TaskHandle::new(&**task);
-
-    PRIORITY_QUEUES[task.priority].enqueue(task); 
-    handle
+  #[inline(never)]
+  pub fn new_task<T: Any>(code: fn(&Args<T>), args: Args<T>, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
+    atomic! {
+      {
+        let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
+        let handle = TaskHandle::new(&**task);
+        PRIORITY_QUEUES[task.priority].enqueue(task); 
+        handle
+      }
+    }
   }
 
   /// Yield the current task to the scheduler so another task can run.
@@ -272,30 +287,6 @@ mod imp {
     yield_task();
   }
 
-  #[doc(hidden)]
-  pub fn alarm_wake() {
-    if !is_kernel_running() {
-      panic!("alarm_wake - This function should only be called from kernel code!");
-    }
-
-    let ticks = Timer::get_current().msec;
-    
-    let to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.delay <= ticks);
-    for mut task in to_wake.into_iter() {
-      task.wchan = 0;
-      task.state = State::Ready;
-      task.delay = 0;
-      PRIORITY_QUEUES[task.priority].enqueue(task);
-    }
-
-    if ticks == !0 {
-      let mut overflowed: Queue<TaskControl> = OVERFLOW_DELAY_QUEUE.remove_all();
-      for task in overflowed.iter_mut() {
-        task.overflowed = false;
-      }
-      DELAY_QUEUE.append(overflowed);
-    }
-  }
 
   pub fn wake(wchan: usize) {
     let to_wake: Queue<TaskControl> = SLEEP_QUEUE.remove(|task| task.wchan == wchan);
@@ -377,10 +368,12 @@ mod imp {
 }
 
 mod priv_imp {
-  use super::PRIORITY_QUEUES;
-  use super::{TaskControl, Priority};
+  use super::{PRIORITY_QUEUES, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE};
+  use super::{TaskControl, Priority, State};
+  use super::args::{Args, Empty};
   use alloc::boxed::Box;
-  use queue::Node;
+  use queue::{Queue, Node};
+  use timer::Timer;
 
   const MAIN_STACK: usize = 0b0;
   const PROGRAM_STACK: usize = 0b10;
@@ -399,13 +392,37 @@ mod priv_imp {
     }
   }
 
+  pub fn alarm_wake() {
+    if !is_kernel_running() {
+      panic!("alarm_wake - This function should only be called from kernel code!");
+    }
+
+    let ticks = Timer::get_current().msec;
+    
+    let to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.delay <= ticks);
+    for mut task in to_wake.into_iter() {
+      task.wchan = 0;
+      task.state = State::Ready;
+      task.delay = 0;
+      PRIORITY_QUEUES[task.priority].enqueue(task);
+    }
+
+    if ticks == !0 {
+      let mut overflowed: Queue<TaskControl> = OVERFLOW_DELAY_QUEUE.remove_all();
+      for task in overflowed.iter_mut() {
+        task.overflowed = false;
+      }
+      DELAY_QUEUE.append(overflowed);
+    }
+  }
+
   pub fn init_idle_task() {
-    let task = TaskControl::new(init_task_code, 256, Priority::Idle, "idle");
+    let task = TaskControl::new(init_task_code, Args::empty(), 256, Priority::Idle, "idle");
 
     PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
   }
 
-  fn init_task_code() {
+  fn init_task_code(_args: &Args<Empty>) {
     loop {
       #[cfg(target_arch="arm")]
       unsafe {

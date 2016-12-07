@@ -11,6 +11,14 @@ pub unsafe extern fn __aeabi_memclr4(dest: *mut u32, mut n: isize) {
   }
 }
 
+#[no_mangle]
+// TODO: Implement this, right now we don't do any reallocations, so it should never get called,
+//   but in the future we might want to do some memory reallocations
+pub unsafe extern fn __aeabi_memmove(dest: *mut u8, src: *const u8, len: isize) {
+  panic!("Don't Reallocate Memory yet!");
+  //if dest.offset(0) >= src.offset(len) 
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;

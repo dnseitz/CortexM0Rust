@@ -44,6 +44,7 @@ macro_rules! atomic {
     )*
     end_critical!(primask);
   }};
+  /*
   { $( $code:expr );*; $last:expr } => {{
     let primask: u32;
     start_critical!(primask);
@@ -54,6 +55,7 @@ macro_rules! atomic {
     end_critical!(primask);
     result
   }};
+  */
   { $last:expr } => {{
     let primask: u32;
     start_critical!(primask);
