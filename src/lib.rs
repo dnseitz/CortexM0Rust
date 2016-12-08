@@ -37,7 +37,7 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 use sync::Mutex;
-use task::{Args, ArgsBuilder, Empty};
+use task::{TaskHandle, Args, ArgsBuilder};
 
 #[cfg(not(test))]
 pub use vector_table::RESET;
@@ -64,8 +64,7 @@ pub fn start() -> ! {
   args1 = args1.add_arg(0xAABBCCDDusize);
   */
 
-  let mut args2 = ArgsBuilder::new(2);
-  args2 = args2.add_arg(100).add_arg(1);
+  let mut args = ArgsBuilder::new(1);
 
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
@@ -77,7 +76,10 @@ pub fn start() -> ! {
   //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
   //task::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
   //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
-  task::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
+  //task::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
+  let handle = task::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
+  args = args.add_arg(&handle as *const _ as usize);
+  task::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
   task::start_first_task();
 
   loop { unsafe { arm::asm::bkpt() }; }
@@ -93,7 +95,7 @@ fn delay_task() {
   }
 }
 
-fn mutex_task_1(_args: &Args<Empty>) {
+fn mutex_task_1(_args: &Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   let mut value = 0;
   loop {
@@ -111,7 +113,7 @@ fn mutex_task_1(_args: &Args<Empty>) {
   }
 }
 
-fn mutex_task_2(_args: &Args<Empty>) {
+fn mutex_task_2(_args: &Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   let mut value = 0;
   loop {
@@ -208,7 +210,7 @@ fn preempt_task_2() {
   }
 }
 
-fn arg_task(args: &Args<usize>) {
+fn arg_task(args: &Args) {
   let ref rate = args[0];
   let ref multiplier = args[1];
   let pb3 = gpio::Port::new(3, gpio::Group::B);
@@ -217,6 +219,28 @@ fn arg_task(args: &Args<usize>) {
     timer::Timer::delay_ms(*rate * *multiplier);
     pb3.reset();
     timer::Timer::delay_ms(*rate * *multiplier);
+  }
+}
+
+fn destroy_task(args: &Args) {
+  let handle = args[0] as *const TaskHandle;
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(1000);
+    pb3.reset();
+    timer::Timer::delay_ms(1000);
+    unsafe { (*handle).destroy() };
+  }
+}
+
+fn to_destroy(args: &Args) {
+  let pb3 = gpio::Port::new(3, gpio::Group::B);
+  loop {
+    pb3.set();
+    timer::Timer::delay_ms(100);
+    pb3.reset();
+    timer::Timer::delay_ms(100);
   }
 }
 

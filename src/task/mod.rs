@@ -5,7 +5,7 @@
 
 mod args;
 
-pub use self::args::{ArgsBuilder, Args, Empty};
+pub use self::args::{ArgsBuilder, Args};
 use volatile::Volatile;
 use queue::{AtomicQueue, Node};
 use alloc::boxed::Box;
@@ -13,7 +13,6 @@ use collections::Vec;
 pub use self::imp::*;
 use self::priv_imp::*;
 use core::ops::Index;
-use core::any::Any;
 
 const VALID_TASK: usize = 0xBADB0100;
 const INVALID_TASK: usize = 0x0;
@@ -45,6 +44,20 @@ pub struct TaskHandle(*const TaskControl);
 impl TaskHandle {
   fn new(task: *const TaskControl) -> Self {
     TaskHandle(task)
+  }
+
+  pub fn destroy(&self) -> bool {
+    let (tid, valid) = unsafe { ((*self.0).tid, (*self.0).valid) };
+    if valid + (tid & 0xFF) == VALID_TASK + (tid & 0xFF) {
+      unsafe {
+        (*(self.0 as *mut TaskControl)).destroy = true;
+        (*(self.0 as *mut TaskControl)).valid = INVALID_TASK;
+      }
+      true
+    }
+    else {
+      false
+    }
   }
 }
 
@@ -80,11 +93,13 @@ pub struct TaskControl {
   stack: usize, /* stack pointer MUST be first field */
   stack_base: usize,
   stack_depth: usize,
+  args: Option<Box<Args>>,
   tid: usize,
   name: &'static str,
   valid: usize,
   wchan: usize,
   delay: usize,
+  destroy: bool,
   overflowed: bool,
   priority: Priority,
   state: State,
@@ -93,26 +108,31 @@ pub struct TaskControl {
 unsafe impl Send for TaskControl {}
 
 impl TaskControl {
-  fn new<T: Any>(code: fn(&Args<T>), args: Args<T>, depth: usize, priority: Priority, name: &'static str) -> Self {
+  fn new(code: fn(&Args), args: Args, depth: usize, priority: Priority, name: &'static str) -> Self {
     let stack_mem: Vec<u8> = Vec::with_capacity(depth);
+    // Arguments struct stored right above the stack
+    let args_mem: Box<Args> = Box::new(args);
+
     let stack = stack_mem.as_ptr() as usize;
-    // Don't free the heap space
+    // Don't free the heap space, we'll clean up when we drop the TaskControl
     ::core::mem::forget(stack_mem);
     let tid = tid::fetch_next_tid();
     let mut task = TaskControl {
       stack: stack + depth,
       stack_base: stack,
       stack_depth: depth,
+      args: Some(args_mem),
       tid: tid,
       name: name,
       valid: VALID_TASK + (tid & 0xFF),
       wchan: 0,
       delay: 0,
+      destroy: false,
       overflowed: false,
       priority: priority,
       state: State::Embryo,
     };
-    task.initialize(code, args);
+    task.initialize(code);
     task
   }
 
@@ -121,11 +141,13 @@ impl TaskControl {
       stack: 0,
       stack_base: 0,
       stack_depth: 0,
+      args: None,
       tid: !0,
       name: name,
       valid: INVALID_TASK,
       wchan: 0,
       delay: 0,
+      destroy: false, 
       overflowed: false,
       priority: Priority::Low,
       state: State::Embryo,
@@ -134,13 +156,8 @@ impl TaskControl {
 
   /// This initializes the task's stack. This method MUST only be called once, calling it more than
   /// once could at best waste some stack space and at worst corrupt an active stack.
-  fn initialize<T: Any>(&mut self, code: fn(&Args<T>), args: Args<T>) {
+  fn initialize(&mut self, code: fn(&Args)) {
     const INITIAL_XPSR: usize = 0x0100_0000;
-    // The Args struct is stored right above the stack
-    let args_mem: Box<Args<T>> = Box::new(args);
-    let args_ptr = args_mem.as_ptr();
-    // Don't deallocate arguments
-    ::core::mem::forget(args_mem);
     unsafe {
       let mut stack_mut = Volatile::new(self.stack as *const usize);
       // Offset added to account for way MCU uses stack on entry/exit of interrupts
@@ -151,7 +168,7 @@ impl TaskControl {
       stack_mut -= 4;
       stack_mut.store(exit_error as usize); /* LR */
       stack_mut -= 20; /* R12, R3, R2, R1 */
-      stack_mut.store(args_ptr as usize); /* R0 */
+      stack_mut.store(if let Some(ref args) = self.args { args.as_ptr() as usize } else { 0 }); /* R0 */
       stack_mut -= 32; /* R11..R4 */
       self.stack = stack_mut.as_ptr() as usize;
     }
@@ -167,6 +184,16 @@ impl TaskControl {
   }
 }
 
+impl Drop for TaskControl {
+  fn drop(&mut self) {
+    // Rebuild stack vec then drop stack memory
+    let size = self.stack_depth;
+    unsafe { 
+      drop(Vec::from_raw_parts(self.stack_base as *mut u8, size, size));
+    }
+  }
+}
+
 /// Select a new task to run and switch its context, this function MUST only be called from the
 /// PendSV handler, calling it from elsewhere could lead to undefined behavior. It must be exposed
 /// publicly so that the compiler doesn't optimize it away when compiling for release.
@@ -178,34 +205,44 @@ pub unsafe fn switch_context() {
   }
   match CURRENT_TASK.take() {
     Some(mut running) => {
-      let queue_index = running.priority;
-      if running.is_stack_overflowed() {
-        ::arm::asm::bkpt();
-      }
-      if running.state == State::Blocked {
-        if running.wchan != FOREVER_CHAN {
-          SLEEP_QUEUE.enqueue(running);
-        }
-        else {
-          if running.overflowed {
-            OVERFLOW_DELAY_QUEUE.enqueue(running);
-          }
-          else {
-            DELAY_QUEUE.enqueue(running);
-          }
-        }
+      if running.destroy {
+        drop(running);
       }
       else {
-        running.state = State::Ready;
-        PRIORITY_QUEUES[queue_index].enqueue(running);
+        let queue_index = running.priority;
+        if running.is_stack_overflowed() {
+          ::arm::asm::bkpt();
+        }
+        if running.state == State::Blocked {
+          if running.wchan != FOREVER_CHAN {
+            SLEEP_QUEUE.enqueue(running);
+          }
+          else {
+            if running.overflowed {
+              OVERFLOW_DELAY_QUEUE.enqueue(running);
+            }
+            else {
+              DELAY_QUEUE.enqueue(running);
+            }
+          }
+        }
+        else {
+          running.state = State::Ready;
+          PRIORITY_QUEUES[queue_index].enqueue(running);
+        }
       }
 
       'main: loop {
         for i in Priority::all() {
-          if let Some(mut new_task) = PRIORITY_QUEUES[i].dequeue() {
-            new_task.state = State::Running;
-            CURRENT_TASK = Some(new_task);
-            break 'main;
+          while let Some(mut new_task) = PRIORITY_QUEUES[i].dequeue() {
+            if new_task.destroy {
+              drop(new_task);
+            }
+            else {
+              new_task.state = State::Running;
+              CURRENT_TASK = Some(new_task);
+              break 'main;
+            }
           }
         }
       }
@@ -242,13 +279,12 @@ mod imp {
   use queue::{Queue, Node};
   use timer::Timer;
   use super::args::Args;
-  use core::any::Any;
 
   /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
   /// kernel will panic with an out of memory (oom) error.
   #[inline(never)]
-  pub fn new_task<T: Any>(code: fn(&Args<T>), args: Args<T>, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
+  pub fn new_task(code: fn(&Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
     atomic! {
       {
         let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
@@ -370,7 +406,7 @@ mod imp {
 mod priv_imp {
   use super::{PRIORITY_QUEUES, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE};
   use super::{TaskControl, Priority, State};
-  use super::args::{Args, Empty};
+  use super::args::Args;
   use alloc::boxed::Box;
   use queue::{Queue, Node};
   use timer::Timer;
@@ -422,7 +458,7 @@ mod priv_imp {
     PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
   }
 
-  fn init_task_code(_args: &Args<Empty>) {
+  fn init_task_code(_args: &Args) {
     loop {
       #[cfg(target_arch="arm")]
       unsafe {

@@ -3,26 +3,25 @@
 //
 // Created by Daniel Seitz on 12/7/16
 
-use core::any::Any;
 use core::ops::{Index, IndexMut};
 use collections::Vec;
 use alloc::boxed::Box;
 
-pub struct Empty;
+type RawPtr = usize;
 
-pub struct ArgsBuilder<T: Any> {
+pub struct ArgsBuilder {
   cap: usize,
   len: usize,
-  vec: Vec<Box<T>>,
+  vec: Vec<Box<RawPtr>>,
 }
 
-impl ArgsBuilder<Empty> {
-  pub fn empty() -> Args<Empty> {
+impl ArgsBuilder {
+  pub fn empty() -> Args {
     Args::empty()
   }
 }
 
-impl<T: Any> ArgsBuilder<T> {
+impl ArgsBuilder {
   pub fn new(cap: usize) -> Self {
     ArgsBuilder { 
       cap: cap,
@@ -32,7 +31,7 @@ impl<T: Any> ArgsBuilder<T> {
   }
 
   #[inline(never)]
-  pub fn add_arg(mut self, arg: T) -> Self {
+  pub fn add_arg(mut self, arg: RawPtr) -> Self {
     if self.len >= self.cap {
       panic!("ArgsBuilder::add_arg - added too many arguments!");
     }
@@ -44,24 +43,22 @@ impl<T: Any> ArgsBuilder<T> {
     self
   }
 
-  pub fn finalize(mut self) -> Args<T> {
+  pub fn finalize(mut self) -> Args {
     unsafe { self.vec.set_len(self.len) };
     Args::new(self.vec)  
   }
 }
 
-pub struct Args<T: Any> {
-  args: Vec<Box<T>>,
+pub struct Args {
+  args: Vec<Box<RawPtr>>,
 }
 
-impl Args<Empty> {
+impl Args {
   pub fn empty() -> Self {
     Args { args: Vec::with_capacity(0) }
   }
-}
 
-impl<T: Any> Args<T> {
-  fn new(args: Vec<Box<T>>) -> Self {
+  fn new(args: Vec<Box<RawPtr>>) -> Self {
     Args { args: args }
   }
 
@@ -71,27 +68,15 @@ impl<T: Any> Args<T> {
 
 }
 
-impl<T: Any> Index<usize> for Args<T> {
-  type Output = T;
+impl Index<usize> for Args {
+  type Output = usize;
   fn index(&self, index: usize) -> &Self::Output {
-    /*
-    if self.args.len() <= index {
-      panic!("Args::index - index {} out of bounds!", index);
-    }
-    unsafe { &*self.args.get_unchecked(index) }
-    */
     &*self.args[index]
   }
 }
 
-impl<T: Any> IndexMut<usize> for Args<T> {
+impl IndexMut<usize> for Args {
   fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-    /*
-    if self.args.len() <= index {
-      panic!("Args::index_mut - index {} out of bounds!", index);
-    }
-    unsafe { &mut *self.args.get_unchecked_mut(index) }
-    */
     &mut *self.args[index]
   }
 }
