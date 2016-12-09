@@ -5,7 +5,7 @@
 
 #![cfg(test)]
 
-use super::{Volatile, RawVolatile};
+use super::Volatile;
 
 #[test]
 fn add_assign_volatile_ptr() {

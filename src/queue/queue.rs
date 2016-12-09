@@ -295,7 +295,7 @@ mod tests {
   #[test]
   fn append_empty() {
     let mut list1 = Queue::new();
-    let mut list2 = Queue::new();
+    let list2 = Queue::new();
 
     list1.enqueue(Box::new(Node::new(1)));
     list1.enqueue(Box::new(Node::new(2)));
@@ -309,6 +309,7 @@ mod tests {
   }
 
   #[test]
+  #[allow(deprecated)]
   fn modify_all() {
     let mut list = Queue::new();
 

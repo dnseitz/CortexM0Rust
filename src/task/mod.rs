@@ -7,7 +7,7 @@ pub mod args;
 
 use self::args::Args;
 use volatile::Volatile;
-use queue::{AtomicQueue, Node};
+use queue::{SyncQueue, Node};
 use alloc::boxed::Box;
 use collections::Vec;
 pub use self::imp::*;
@@ -26,17 +26,17 @@ type HandleResult<T> = Result<T, ()>;
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
 
 // TODO: Get rid of the Idle priority level in favor of the static INIT_TASK
-static PRIORITY_QUEUES: [AtomicQueue<TaskControl>; NUM_PRIORITIES] = [AtomicQueue::new(),
-                                                                      AtomicQueue::new(), 
-                                                                      AtomicQueue::new(), 
-                                                                      AtomicQueue::new()];
-static SLEEP_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
-static DELAY_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
-static OVERFLOW_DELAY_QUEUE: AtomicQueue<TaskControl> = AtomicQueue::new();
+static PRIORITY_QUEUES: [SyncQueue<TaskControl>; NUM_PRIORITIES] = [SyncQueue::new(),
+                                                                    SyncQueue::new(), 
+                                                                    SyncQueue::new(), 
+                                                                    SyncQueue::new()];
+static SLEEP_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
+static DELAY_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
+static OVERFLOW_DELAY_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
 static mut INIT_TASK: TaskControl = TaskControl::uninitialized("idle");
 
-impl Index<Priority> for [AtomicQueue<TaskControl>] {
-  type Output = AtomicQueue<TaskControl>;
+impl Index<Priority> for [SyncQueue<TaskControl>] {
+  type Output = SyncQueue<TaskControl>;
   fn index(&self, idx: Priority) -> &Self::Output {
     &self[idx as usize]
   }
@@ -131,7 +131,9 @@ pub enum Priority {
   Critical = 0,
   Normal = 1,
   Low = 2,
-  Idle = 3,
+
+  #[doc(hidden)]
+  __Idle = 3,
 }
 
 impl Priority {
@@ -154,6 +156,7 @@ pub enum State {
 }
 
 #[repr(C)]
+#[doc(hidden)]
 pub struct TaskControl {
   stack: usize, /* stack pointer MUST be first field */
   stack_base: usize,
@@ -169,8 +172,6 @@ pub struct TaskControl {
   priority: Priority,
   state: State,
 }
-
-unsafe impl Send for TaskControl {}
 
 impl TaskControl {
   fn new(code: fn(&Args), args: Args, depth: usize, priority: Priority, name: &'static str) -> Self {
@@ -325,10 +326,7 @@ fn exit_error() -> ! {
 }
 
 mod tid {
-  #[cfg(not(target_has_atomic="ptr"))]
   use atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
-  #[cfg(target_has_atomic="ptr")]
-  use core::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
 
   static CURRENT_TID: AtomicUsize = ATOMIC_USIZE_INIT;
   
@@ -522,7 +520,7 @@ mod priv_imp {
   }
 
   pub fn init_idle_task() {
-    let task = TaskControl::new(init_task_code, Args::empty(), 256, Priority::Idle, "idle");
+    let task = TaskControl::new(init_task_code, Args::empty(), 256, Priority::__Idle, "idle");
 
     PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
   }

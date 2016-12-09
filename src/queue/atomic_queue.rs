@@ -2,25 +2,25 @@
 // AltOSRust
 //
 // Created by Daniel Seitz on 12/3/16
-//! An atomic wrapper around the Queue struct. Able to be synchronized between threads.
+//! A synchronized wrapper around the Queue struct.
 use queue::{Queue, Node};
 use alloc::boxed::Box;
 use sync::spin::{SpinMutex, MutexGuard};
 
-pub struct AtomicQueue<T> {
+pub struct SyncQueue<T> {
   lock: SpinMutex<Queue<T>>,
 }
 
-unsafe impl<T: Send> Sync for AtomicQueue<T> {}
-unsafe impl<T: Send> Send for AtomicQueue<T> {}
+unsafe impl<T: Send> Sync for SyncQueue<T> {}
+unsafe impl<T: Send> Send for SyncQueue<T> {}
 
-impl<T> AtomicQueue<T> {
+impl<T> SyncQueue<T> {
   pub const fn new() -> Self {
-    AtomicQueue { lock: SpinMutex::new(Queue::new()) }
+    SyncQueue { lock: SpinMutex::new(Queue::new()) }
   }
 
   pub fn from(queue: Queue<T>) -> Self {
-    AtomicQueue { lock: SpinMutex::new(queue) }
+    SyncQueue { lock: SpinMutex::new(queue) }
   }
 
   pub fn enqueue(&self, elem: Box<Node<T>>) {
@@ -64,8 +64,8 @@ impl<T> AtomicQueue<T> {
   }
 }
 
-impl<T> Default for AtomicQueue<T> {
+impl<T> Default for SyncQueue<T> {
   fn default() -> Self {
-    AtomicQueue::new()
+    SyncQueue::new()
   }
 }

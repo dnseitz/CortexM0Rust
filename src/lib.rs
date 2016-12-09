@@ -204,6 +204,7 @@ fn preempt_task_1() {
   let mut value: usize = 0;
   loop {
     value += 1;
+    if value == value {} // Silence unused warning
   }
 }
 
@@ -211,6 +212,7 @@ fn preempt_task_2() {
   let mut value: usize = !0;
   loop {
     value -= 1;
+    if value == value {} // Silence unused warning
   }
 }
 
@@ -227,18 +229,18 @@ fn arg_task(args: &Args) {
 }
 
 fn destroy_task(args: &Args) {
-  let handle = args[0] as *const TaskHandle;
+  let handle = unsafe { &*(args[0] as *const TaskHandle) };
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
     timer::Timer::delay_ms(1000);
     pb3.reset();
     timer::Timer::delay_ms(1000);
-    unsafe { (*handle).destroy() };
+    handle.destroy();
   }
 }
 
-fn to_destroy(args: &Args) {
+fn to_destroy(_args: &Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
