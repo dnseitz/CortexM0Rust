@@ -19,6 +19,8 @@ const INVALID_TASK: usize = 0x0;
 const NUM_PRIORITIES: usize = 4;
 pub const FOREVER_CHAN: usize = 0;
 
+type HandleResult<T> = Result<T, ()>;
+
 #[no_mangle]
 #[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
@@ -48,17 +50,79 @@ impl TaskHandle {
   }
 
   pub fn destroy(&self) -> bool {
-    let (tid, valid) = unsafe { ((*self.0).tid, (*self.0).valid) };
-    if valid + (tid & 0xFF) == VALID_TASK + (tid & 0xFF) {
-      unsafe {
-        (*(self.0 as *mut TaskControl)).destroy = true;
-        (*(self.0 as *mut TaskControl)).valid = INVALID_TASK;
-      }
+    if self.is_valid() {
+      let task = self.task_ref_mut();
+      task.destroy = true;
+      task.valid = INVALID_TASK;
       true
     }
     else {
       false
     }
+  }
+
+  pub fn priority(&self) -> HandleResult<Priority> {
+    if self.is_valid() {
+      let task = self.task_ref();
+      Ok(task.priority)
+    }
+    else {
+      Err(())
+    }
+  }
+
+  pub fn state(&self) -> HandleResult<State> {
+    if self.is_valid() {
+      let task = self.task_ref();
+      Ok(task.state)
+    }
+    else {
+      Err(())
+    }
+  }
+
+  pub fn tid(&self) -> HandleResult<usize> {
+    if self.is_valid() {
+      let task = self.task_ref();
+      Ok(task.tid)
+    }
+    else {
+      Err(())
+    }
+  }
+
+  pub fn name(&self) -> HandleResult<&'static str> {
+    if self.is_valid() {
+      let task = self.task_ref();
+      Ok(task.name)
+    }
+    else {
+      Err(())
+    }
+  }
+
+  pub fn stack_size(&self) -> HandleResult<usize> {
+    if self.is_valid() {
+      let task = self.task_ref();
+      Ok(task.stack_depth)
+    }
+    else {
+      Err(())
+    }
+  }
+
+  fn is_valid(&self) -> bool {
+    let (tid, valid) = unsafe { ((*self.0).tid, (*self.0).valid) };
+    let tid_mask = tid & 0xFF;
+    valid + tid_mask == VALID_TASK + tid_mask 
+  }
+
+  fn task_ref(&self) -> &TaskControl {
+    unsafe { &*self.0 }
+  }
+
+  fn task_ref_mut(&self) -> &mut TaskControl {
+    unsafe { &mut *(self.0 as *mut TaskControl) }
   }
 }
 
@@ -81,7 +145,7 @@ impl Priority {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum State {
+pub enum State {
   Embryo,
   Ready,
   Running,

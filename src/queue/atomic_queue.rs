@@ -5,7 +5,6 @@
 //! An atomic wrapper around the Queue struct. Able to be synchronized between threads.
 use queue::{Queue, Node};
 use alloc::boxed::Box;
-use core::cell::UnsafeCell;
 use sync::spin::{SpinMutex, MutexGuard};
 
 pub struct AtomicQueue<T> {
