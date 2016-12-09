@@ -21,8 +21,9 @@ extern crate alloc;
 #[macro_use]
 extern crate collections;
 extern crate arm;
+#[cfg(not(target_has_atomic="ptr"))]
+extern crate cm0_atomic as atomic;
 
-mod atomic;
 mod exceptions;
 mod peripheral;
 mod timer;
@@ -33,6 +34,8 @@ mod system_control;
 mod sync;
 mod queue;
 
+#[cfg(target_has_atomic="ptr")]
+use core::sync::atomic as atomic;
 use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;

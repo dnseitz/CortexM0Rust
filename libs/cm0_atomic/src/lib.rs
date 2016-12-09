@@ -1,10 +1,14 @@
-// atomic/mod.rs
+// lib.rs
 // AltOSRust
 //
 // Created by Daniel Seitz on 11/30/16
 
-use ::core::cell::UnsafeCell;
-use ::core::ops::{Add, Sub, BitAnd, BitOr, BitXor};
+#![feature(asm)]
+#![feature(const_fn)]
+#![no_std]
+
+use core::cell::UnsafeCell;
+use core::ops::{Add, Sub, BitAnd, BitOr, BitXor};
 
 macro_rules! start_critical {
   ($var:ident) => {{

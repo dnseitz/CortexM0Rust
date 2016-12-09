@@ -3,10 +3,7 @@
 //
 // Created by Daniel Seitz on 12/1/16
 
-#[cfg(not(target_has_atomic="ptr"))]
 use atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
-#[cfg(target_has_atomic="ptr")]
-use core::sync::atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
 use core::ops::{Drop, Deref, DerefMut};
 use core::cell::UnsafeCell;
 
