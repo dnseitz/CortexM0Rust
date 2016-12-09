@@ -9,7 +9,7 @@
 #![feature(const_fn)]
 #![feature(alloc)]
 #![feature(collections)]
-#![feature(drop_types_in_const)] // Probably can come back and remove this later
+#![feature(drop_types_in_const)]
 #![feature(cfg_target_has_atomic)]
 #![no_std]
 

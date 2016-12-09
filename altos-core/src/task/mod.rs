@@ -18,7 +18,6 @@ use sync::CriticalSection;
 const NUM_PRIORITIES: usize = 4;
 pub const FOREVER_CHAN: usize = 0;
 
-
 #[no_mangle]
 #[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
@@ -37,7 +36,6 @@ impl Index<Priority> for [SyncQueue<TaskControl>] {
     &self[idx as usize]
   }
 }
-
 
 /// Select a new task to run and switch its context, this function MUST only be called from the
 /// PendSV handler, calling it from elsewhere could lead to undefined behavior. It must be exposed
@@ -218,12 +216,12 @@ fn alarm_wake() {
 }
 
 fn init_idle_task() {
-  let task = TaskControl::new(init_task_code, Args::empty(), 256, Priority::__Idle, "idle");
+  let task = TaskControl::new(idle_task_code, Args::empty(), 256, Priority::__Idle, "idle");
 
   PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
 }
 
-fn init_task_code(_args: &Args) {
+fn idle_task_code(_args: &Args) {
   loop {
     #[cfg(target_arch="arm")]
     unsafe {
