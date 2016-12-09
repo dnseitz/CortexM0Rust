@@ -9,7 +9,3 @@ crate-type = ["rlib"]
 [dependencies]
 altos_core = { path = "../../altos-core" }
 arm = { path = "libs/arm" }
-
-[[test]]
-name = "arm"
-path = "libs/arm/src/lib.rs"

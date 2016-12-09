@@ -78,4 +78,8 @@ impl SysTick {
   pub fn clear_current_value(&self) {
     self.cvr.clear_current_value();
   }
+
+  pub fn did_underflow(&self) -> bool {
+    self.csr.did_underflow()
+  }
 }

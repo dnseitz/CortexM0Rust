@@ -21,7 +21,8 @@ cargo_args = --target $(target)
 ### TEST ###
 test_dependencies = altos_core \
 										arm \
-test_args = $(foreach dep,$(test_dependencies),$(-p $(dep)))
+
+test_args = $(foreach dep, $(test_dependencies),-p $(dep))
 
 ### LINKER ###
 linker = arm-none-eabi-ld

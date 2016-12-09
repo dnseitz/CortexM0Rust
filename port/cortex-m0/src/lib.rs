@@ -8,8 +8,8 @@
 #![feature(naked_functions)]
 #![feature(const_fn)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
-#![no_std]
 #![allow(dead_code)]
+#![no_std]
 
 extern crate altos_core;
 pub extern crate arm;
@@ -23,12 +23,10 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 
-#[cfg(not(test))]
-//#[doc(hidden)]
+#[doc(hidden)]
 #[cfg(target_arch="arm")]
 pub use vector_table::RESET;
-#[cfg(not(test))]
-//#[doc(hidden)]
+#[doc(hidden)]
 #[cfg(target_arch="arm")]
 pub use exceptions::EXCEPTIONS;
 use altos_core::alloc::boxed::Box;
@@ -46,7 +44,7 @@ pub mod kernel {
 
   pub mod collections {
     pub use altos_core::collections::Vec;
-    pub use altos_core::queue::{SortedList, Queue};
+    pub use altos_core::queue::{SortedList, Queue, Node};
   }
 
   pub mod sync {
@@ -119,17 +117,21 @@ pub fn start_first_task() {
 
 #[no_mangle]
 pub fn in_kernel_mode() -> bool {
-  const MAIN_STACK: usize = 0b0;
-  const PROGRAM_STACK: usize = 0b10;
-  unsafe {
-    let mut stack_mask: usize = 0;
-    #[cfg(target_arch="arm")]
-    asm!("mrs $0, CONTROL\n" /* get the stack control mask */
-      : "=r"(stack_mask)
-      : /* no inputs */
-      : /* no clobbers */
-      : "volatile");
-    stack_mask == MAIN_STACK
+  if cfg!(target_arch = "arm") {
+    const MAIN_STACK: usize = 0b0;
+    const PROGRAM_STACK: usize = 0b10;
+    unsafe {
+      let stack_mask: usize;
+      asm!("mrs $0, CONTROL\n" /* get the stack control mask */
+        : "=r"(stack_mask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+      stack_mask == MAIN_STACK
+    }
+  }
+  else {
+    true
   }
 }
 
@@ -148,7 +150,8 @@ pub fn begin_critical() -> usize {
         : "volatile");
     }
     primask
-  } else {
+  } 
+  else {
     0
   }
 }
@@ -178,6 +181,7 @@ fn exit_error() {
 #[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
 
 extern {
+  // The application layer's entry point
   fn application_entry() -> !;
 }
 
@@ -194,7 +198,6 @@ pub fn init() -> ! {
   unsafe { application_entry() };
 }
 
-#[cfg(not(test))]
 #[cfg(target_arch="arm")]
 mod vector_table {
   #[link_section = ".reset"]

@@ -5,18 +5,9 @@ authors = ["Daniel Seitz <dnseitz@gmail.com>"]
 
 [lib]
 crate-type = ["staticlib"]
-test = false
 
 [target.cortex-m0.dependencies]
 cortex_m0 = { path = "port/cortex-m0" }
-
-[[test]]
-name = "altos_core"
-path = "altos-core/src/lib.rs"
-
-[[test]]
-name = "arm"
-path = "port/cortex-m0/libs/arm/src/lib.rs"
 
 [profile.dev]
 opt-level = 0
