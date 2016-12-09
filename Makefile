@@ -2,6 +2,7 @@ binary = altos_rust
 static_lib = lib$(binary).a
 linker_script = rust.ld
 target = cortex-m0
+core_lib = altos_core
 
 build_path = build/
 
@@ -16,7 +17,7 @@ release_build = $(release_build_path)$(binary)
 ### CARGO ###
 cargo = xargo
 cargo_args = --target $(target)
-test_args = 
+test_args = -p $(core_lib)
 
 ### LINKER ###
 linker = arm-none-eabi-ld

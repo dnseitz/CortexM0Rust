@@ -4,63 +4,161 @@
 // Created by Daniel Seitz on 11/30/16
 
 #![feature(lang_items)]
-#![feature(core_intrinsics)]
 #![feature(asm)]
 #![feature(naked_functions)]
 #![feature(const_fn)]
-#![feature(alloc)]
-#![feature(collections)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
-#![feature(cfg_target_has_atomic)]
 #![no_std]
 #![allow(dead_code)]
 
-#[cfg(not(test))]
-extern crate bump_allocator;
-extern crate alloc;
-#[macro_use]
-extern crate collections;
-extern crate arm;
-#[cfg(not(target_has_atomic="ptr"))]
-extern crate cm0_atomic as atomic;
+extern crate altos_core;
 
 mod exceptions;
 mod peripheral;
-mod timer;
-mod volatile;
 mod interrupt;
-mod task;
 mod system_control;
-mod sync;
-mod queue;
 
-#[cfg(target_has_atomic="ptr")]
-use core::sync::atomic as atomic;
 use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
-use sync::Mutex;
-use task::TaskHandle;
-use task::args::{Args, Builder};
+use altos_core::sync::Mutex;
 
 #[cfg(not(test))]
 pub use vector_table::RESET;
 #[cfg(not(test))]
 pub use exceptions::EXCEPTIONS;
 pub use task::{CURRENT_TASK, switch_context};
-use alloc::boxed::Box;
+use altos_core::alloc::boxed::Box;
+
+use altos_core::timer;
+use altos_core::task::args::{Args, Builder};
+use altos_core::task;
+use altos_core::task::TaskHandle;
+use altos_core::arm;
+use altos_core::volatile;
 
 #[no_mangle]
 // FIXME: Unmangle and make private again
 pub static TEST_MUTEX: Mutex<u32> = Mutex::new(0);
 
-// List of methods we'll likely need from port layer
-extern {
-  fn yield_cpu();
-  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&Args), args: Option<&Box<Args>>) -> usize;
-  fn start_first_task();
-  fn in_kernel_mode() -> bool;
+#[no_mangle]
+pub fn yield_cpu() {
+  let scb = system_control::scb();
+  scb.set_pend_sv();
 }
+
+#[no_mangle]
+pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&Args), args: Option<&Box<Args>>) -> usize {
+  const INITIAL_XPSR: usize = 0x0100_0000;
+  unsafe {
+    // Offset added to account for way MCU uses stack on entry/exit of interrupts
+    stack_ptr -= 4;
+    stack_ptr.store(INITIAL_XPSR); /* xPSR */
+    stack_ptr -= 4;
+    stack_ptr.store(code as usize); /* PC */
+    stack_ptr -= 4;
+    stack_ptr.store(exit_error as usize); /* LR */
+    stack_ptr -= 20; /* R12, R3, R2, R1 */
+    stack_ptr.store(if let Some(args) = args { args.as_ptr() as usize } else { 0 }); /* R0 */
+    stack_ptr -= 32; /* R11..R4 */
+    stack_ptr.as_ptr() as usize
+  }
+}
+
+#[no_mangle]
+#[inline(never)]
+pub fn start_first_task() {
+  unsafe {
+    #![cfg(target_arch="arm")]
+    asm!(
+      concat!(
+          "ldr r2, current_task_const_2\n", /* get location of current_task */
+          "ldr r3, [r2]\n",
+          "ldr r0, [r3]\n",
+
+          "adds r0, #32\n", /* discard everything up to r0 */
+          "msr psp, r0\n", /* this is the new top of stack to use for the task */
+
+          "movs r0, #2\n", /* switch to the psp stack */
+          "msr CONTROL, r0\n", /* we're using psp instead of msp now */
+
+          "isb\n", /* instruction barrier */
+
+          "pop {r0-r5}\n", /* pop the registers that are saved automatically */
+          "mov lr, r5\n", /* lr is now in r5, so put it back where it belongs */
+          "pop {r3}\n", /* pop return address (old pc) into r3 */
+          "pop {r2}\n", /* pop and discard xPSR */
+          "cpsie i\n", /* first task has its context, so interrupts can be enabled */
+          "bx r3\n", /* start executing user code */
+
+           ".align 4\n",
+          "current_task_const_2: .word CURRENT_TASK\n")
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
+  }
+}
+
+#[no_mangle]
+pub fn in_kernel_mode() -> bool {
+  const MAIN_STACK: usize = 0b0;
+  const PROGRAM_STACK: usize = 0b10;
+  unsafe {
+    let mut stack_mask: usize = 0;
+    #[cfg(target_arch="arm")]
+    asm!("mrs $0, CONTROL\n" /* get the stack control mask */
+      : "=r"(stack_mask)
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
+    stack_mask == MAIN_STACK
+  }
+}
+
+#[no_mangle]
+pub fn begin_critical() -> usize {
+  if cfg!(target_arch = "arm") {
+    let primask: usize;
+    unsafe {
+      asm!(
+        concat!(
+          "mrs $0, PRIMASK\n",
+          "cpsid i\n")
+        : "=r"(primask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+    }
+    primask
+  } else {
+    0
+  }
+}
+
+#[no_mangle]
+pub fn end_critical(primask: usize) {
+  #[cfg(target_arch="arm")]
+  unsafe {
+    asm!("msr PRIMASK, $0"
+      : /* no outputs */
+      : "r"(primask)
+      : /* no clobbers */
+      : "volatile");
+  }
+}
+
+fn exit_error() {
+  unsafe {
+    ::arm::asm::bkpt();
+    loop{}
+  }
+}
+
+#[cfg(not(test))]
+#[lang = "eh_personality"] extern fn eh_personality() {}
+#[cfg(not(test))]
+#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
 
 #[no_mangle]
 pub fn start() -> ! {
@@ -266,11 +364,6 @@ mod vector_table {
   pub static RESET: fn() -> ! = ::start;
 }
 
-#[cfg(not(test))]
-#[lang = "eh_personality"] extern fn eh_personality() {}
-#[cfg(not(test))]
-#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
-
 fn init_data_segment() {
   #[cfg(target_arch="arm")]
   unsafe {
@@ -332,7 +425,7 @@ fn init_heap() {
         : /* no inputs */
         : "r0", "r1", "r2"
     );
-    bump_allocator::init_heap(heap_start, heap_size);
+    altos_core::init::init_heap(heap_start, heap_size);
   }
 
 }

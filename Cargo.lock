@@ -10,7 +10,7 @@ name = "alloc"
 version = "0.1.0"
 
 [[package]]
-name = "altos_rust"
+name = "altos_core"
 version = "0.1.0"
 dependencies = [
  "alloc 0.1.0",
@@ -18,6 +18,13 @@ dependencies = [
  "bump_allocator 0.1.0",
  "cm0_atomic 0.1.0",
  "collections 0.1.0",
+]
+
+[[package]]
+name = "altos_rust"
+version = "0.1.0"
+dependencies = [
+ "altos_core 0.1.0",
 ]
 
 [[package]]

@@ -52,33 +52,6 @@ impl<T> Queue<T> {
       head
     })
   }
-
-  /// Insert an item into the queue in its sorted order. The queue MUST be sorted already.
-  /// O(n) algorithmic time
-  // TODO: Private for now until I figure out if I want to have this method or not
-  fn sorted_insert<F: Fn(&T, &T) -> bool>(&mut self, mut elem: Box<Node<T>>, sort: F) {
-    if self.head.is_none() || sort(&*elem, &*self.head.as_ref().unwrap()) {
-      elem.next = self.head.take();
-      self.head = Some(elem);
-      return;
-    }
-    let mut current = self.head.as_mut();
-    while let Some(node) = current.take() {
-      if node.next.is_none() || sort(&*elem, &*node.next.as_ref().unwrap()) {
-        current = Some(node);
-        break;
-      }
-      current = node.next.as_mut();
-    }
-
-    if let Some(node) = current.take() {
-      if node.next.is_none() {
-        self.tail = &mut *elem;
-      }
-      elem.next = node.next.take();
-      node.next = Some(elem);
-    }
-  }
   
   /// Remove all elements matching `predicate` and return them in a new queue
   /// O(n) algorithmic time

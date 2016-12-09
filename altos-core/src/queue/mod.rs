@@ -9,6 +9,7 @@ mod sorted_list;
 
 pub use self::queue::*;
 pub use self::atomic_queue::*;
+pub use self::sorted_list::*;
 use alloc::boxed::Box;
 use core::ops::{Deref, DerefMut};
 
