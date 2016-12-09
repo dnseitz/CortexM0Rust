@@ -1,7 +1,7 @@
-// sync/mutex.rs
+// sync/spin_mutex.rs
 // AltOSRust
 //
-// Created by Daniel Seitz on 12/1/16
+// Created by Daniel Seitz on 12/8/16
 
 #[cfg(not(target_has_atomic="ptr"))]
 use atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
@@ -10,60 +10,45 @@ use core::sync::atomic::{ATOMIC_BOOL_INIT, AtomicBool, Ordering};
 use core::ops::{Drop, Deref, DerefMut};
 use core::cell::UnsafeCell;
 
-pub struct Mutex<T: ?Sized> {
+pub struct SpinMutex<T: ?Sized> {
   lock: AtomicBool,
   data: UnsafeCell<T>,
 }
 
 pub struct MutexGuard<'mx, T: ?Sized + 'mx> {
-  wchan: usize,
   lock: &'mx AtomicBool,
   data: &'mx mut T,
 }
 
-unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
-unsafe impl<T: ?Sized + Send> Send for Mutex<T> {}
+unsafe impl<T: ?Sized + Send> Send for SpinMutex<T> {}
+unsafe impl<T: ?Sized + Send> Sync for SpinMutex<T> {}
 
-impl<T> Mutex<T> {
-  /// Creates a new mutex lock wrapping the supplied data
+impl<T> SpinMutex<T> {
   pub const fn new(data: T) -> Self {
-    Mutex {
+    SpinMutex {
       lock: ATOMIC_BOOL_INIT,
       data: UnsafeCell::new(data),
     }
   }
 }
 
-impl<T: ?Sized> Mutex<T> {
-  fn wchan(&self) -> usize {
-    &self.lock as *const _ as usize
-  }
-
+impl<T: ?Sized> SpinMutex<T> {
   fn obtain_lock(&self) {
-    while self.lock.compare_and_swap(false, true, Ordering::Acquire) != false {
-      // let another process run if we can't get the lock
-      let wchan = self.wchan();
-      ::task::sleep(wchan);
-    }
+    while self.lock.compare_and_swap(false, true, Ordering::Acquire) != false {/* spin */}
   }
 
-  /// Locks the mutex, blocking until it can hold the lock.
   pub fn lock(&self) -> MutexGuard<T> {
     self.obtain_lock();
     MutexGuard {
-      wchan: self.wchan(),
       lock: &self.lock,
       data: unsafe { &mut *self.data.get() },
     }
   }
 
-  /// Tries to lock the mutex, if it's already locked then returns None. Otherwise it returns a
-  /// guard in Some. This is a non-blocking operation.
   pub fn try_lock(&self) -> Option<MutexGuard<T>> {
     if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false {
       Some(
         MutexGuard {
-          wchan: self.wchan(),
           lock: &self.lock,
           data: unsafe { &mut *self.data.get() },
         }
@@ -92,16 +77,6 @@ impl<'mx, T: ?Sized> DerefMut for MutexGuard<'mx, T> {
 impl<'mx, T: ?Sized> Drop for MutexGuard<'mx, T> {
   /// Dropping the guard will unlock the lock it came from and wake any tasks waiting on it.
   fn drop(&mut self) {
-    // Do we care if we get pre-empted and another thread steals the lock before we wake the
-    // sleeping tasks?
-    self.lock.store(false, Ordering::SeqCst);
-    ::task::wake(self.wchan);
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  #[test]
-  fn smoke() {
+    self.lock.store(false, Ordering::Release);
   }
 }

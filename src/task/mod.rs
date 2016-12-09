@@ -261,13 +261,16 @@ fn exit_error() -> ! {
 }
 
 mod tid {
-  use atomic::Atomic;
+  #[cfg(not(target_has_atomic="ptr"))]
+  use atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
+  #[cfg(target_has_atomic="ptr")]
+  use core::sync::atomic::{ATOMIC_USIZE_INIT, AtomicUsize, Ordering};
 
-  static CURRENT_TID: Atomic<usize> = Atomic::new(0);
+  static CURRENT_TID: AtomicUsize = ATOMIC_USIZE_INIT;
   
   /// Atomically increment the task id and return the old value
   pub fn fetch_next_tid() -> usize {
-    CURRENT_TID.fetch_add(1)
+    CURRENT_TID.fetch_add(1, Ordering::SeqCst)
   }
 }
 
@@ -280,20 +283,21 @@ mod imp {
   use queue::{Queue, Node};
   use timer::Timer;
   use super::args::Args;
+  use sync::CriticalSection;
 
   /// Create a new task and put it into the task queue for running. The stack depth is how many bytes
   /// should be allocated for the stack, if there is not enough space to allocate the stack the
   /// kernel will panic with an out of memory (oom) error.
   #[inline(never)]
   pub fn new_task(code: fn(&Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
-    atomic! {
-      {
-        let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
-        let handle = TaskHandle::new(&**task);
-        PRIORITY_QUEUES[task.priority].enqueue(task); 
-        handle
-      }
-    }
+    // Make sure the task is allocated in one fell swoop
+    let critical_guard = CriticalSection::begin();
+    let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
+    drop(critical_guard);
+
+    let handle = TaskHandle::new(&**task);
+    PRIORITY_QUEUES[task.priority].enqueue(task); 
+    handle
   }
 
   /// Yield the current task to the scheduler so another task can run.

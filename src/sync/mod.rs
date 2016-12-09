@@ -3,6 +3,10 @@
 //
 // Created by Daniel Seitz on 12/1/16
 
-mod mutex;
+pub mod mutex;
+pub mod spin;
+mod critical;
 
-pub use self::mutex::{Mutex, MutexGuard};
+pub use self::mutex::Mutex;
+pub use self::spin::SpinMutex;
+pub use self::critical::CriticalSection;

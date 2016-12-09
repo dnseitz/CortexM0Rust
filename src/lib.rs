@@ -11,6 +11,7 @@
 #![feature(alloc)]
 #![feature(collections)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
+#![feature(cfg_target_has_atomic)]
 #![no_std]
 #![allow(dead_code)]
 
@@ -21,7 +22,6 @@ extern crate alloc;
 extern crate collections;
 extern crate arm;
 
-#[macro_use]
 mod atomic;
 mod exceptions;
 mod peripheral;
