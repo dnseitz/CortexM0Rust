@@ -9,21 +9,19 @@ use alloc::boxed::Box;
 
 type RawPtr = usize;
 
-pub struct ArgsBuilder {
+pub struct Builder {
   cap: usize,
   len: usize,
   vec: Vec<Box<RawPtr>>,
 }
 
-impl ArgsBuilder {
+impl Builder {
   pub fn empty() -> Args {
     Args::empty()
   }
-}
 
-impl ArgsBuilder {
   pub fn new(cap: usize) -> Self {
-    ArgsBuilder { 
+    Builder { 
       cap: cap,
       len: 0,
       vec: Vec::with_capacity(cap),

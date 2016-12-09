@@ -3,9 +3,9 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
-mod args;
+pub mod args;
 
-pub use self::args::{ArgsBuilder, Args};
+use self::args::Args;
 use volatile::Volatile;
 use queue::{AtomicQueue, Node};
 use alloc::boxed::Box;
@@ -23,6 +23,7 @@ pub const FOREVER_CHAN: usize = 0;
 #[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
 
+// TODO: Get rid of the Idle priority level in favor of the static INIT_TASK
 static PRIORITY_QUEUES: [AtomicQueue<TaskControl>; NUM_PRIORITIES] = [AtomicQueue::new(),
                                                                       AtomicQueue::new(), 
                                                                       AtomicQueue::new(), 

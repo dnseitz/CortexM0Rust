@@ -37,7 +37,8 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 use sync::Mutex;
-use task::{TaskHandle, Args, ArgsBuilder};
+use task::TaskHandle;
+use task::args::{Args, Builder};
 
 #[cfg(not(test))]
 pub use vector_table::RESET;
@@ -64,7 +65,7 @@ pub fn start() -> ! {
   args1 = args1.add_arg(0xAABBCCDDusize);
   */
 
-  let mut args = ArgsBuilder::new(1);
+  let mut args = Builder::new(1);
 
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
