@@ -8,16 +8,11 @@ crate-type = ["rlib"]
 
 [dependencies]
 bump_allocator = { path = "libs/heap/bump_allocator" }
-arm = { path = "libs/arm" }
 
 [target.cortex-m0.dependencies]
 alloc = { path = "libs/alloc" }
 collections = { path = "libs/collections" }
 cm0_atomic = { path = "libs/cm0_atomic" }
-
-[[test]]
-name = "arm"
-path = "libs/arm/src/lib.rs"
 
 [[test]]
 name = "cm0-atomic"

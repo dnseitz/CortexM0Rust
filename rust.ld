@@ -10,7 +10,7 @@ _stack_start = ORIGIN(RAM) + LENGTH(RAM);
 _stack_end = _stack_start - stack_size;
 _heap_end = _stack_end;
 
-ENTRY(start);
+ENTRY(init);
 
 SECTIONS
 {

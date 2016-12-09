@@ -1,8 +1,9 @@
 [root]
-name = "collections"
+name = "cortex_m0"
 version = "0.1.0"
 dependencies = [
- "alloc 0.1.0",
+ "altos_core 0.1.0",
+ "arm 0.1.0",
 ]
 
 [[package]]
@@ -14,7 +15,6 @@ name = "altos_core"
 version = "0.1.0"
 dependencies = [
  "alloc 0.1.0",
- "arm 0.1.0",
  "bump_allocator 0.1.0",
  "cm0_atomic 0.1.0",
  "collections 0.1.0",
@@ -24,7 +24,7 @@ dependencies = [
 name = "altos_rust"
 version = "0.1.0"
 dependencies = [
- "altos_core 0.1.0",
+ "cortex_m0 0.1.0",
 ]
 
 [[package]]
@@ -38,4 +38,11 @@ version = "0.1.0"
 [[package]]
 name = "cm0_atomic"
 version = "0.1.0"
+
+[[package]]
+name = "collections"
+version = "0.1.0"
+dependencies = [
+ "alloc 0.1.0",
+]
 

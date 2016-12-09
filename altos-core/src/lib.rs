@@ -17,8 +17,6 @@
 extern crate bump_allocator;
 pub extern crate alloc;
 pub extern crate collections;
-#[cfg(not(test))]
-pub extern crate arm;
 #[cfg(not(target_has_atomic="ptr"))]
 pub extern crate cm0_atomic as atomic;
 

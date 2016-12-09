@@ -3,6 +3,7 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
+pub mod public;
 pub mod args;
 mod task_control;
 
@@ -230,3 +231,4 @@ fn idle_task_code(_args: &Args) {
     yield_task();
   }
 }
+

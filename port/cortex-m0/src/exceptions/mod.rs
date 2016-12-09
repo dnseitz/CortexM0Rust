@@ -7,6 +7,7 @@ use arm::asm::bkpt;
 use task;
 
 #[link_section = ".exceptions"]
+#[cfg(not(test))]
 #[cfg(target_arch="arm")]
 #[no_mangle]
 pub static EXCEPTIONS: [Option<fn()>; 14] = [Some(default_handler),  // NMI

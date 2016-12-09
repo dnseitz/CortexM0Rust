@@ -17,7 +17,11 @@ release_build = $(release_build_path)$(binary)
 ### CARGO ###
 cargo = xargo
 cargo_args = --target $(target)
-test_args = -p $(core_lib)
+
+### TEST ###
+test_dependencies = altos_core \
+										arm \
+test_args = $(foreach dep,$(test_dependencies),$(-p $(dep)))
 
 ### LINKER ###
 linker = arm-none-eabi-ld
