@@ -48,10 +48,19 @@ pub use vector_table::RESET;
 #[cfg(not(test))]
 pub use exceptions::EXCEPTIONS;
 pub use task::{CURRENT_TASK, switch_context};
+use alloc::boxed::Box;
 
 #[no_mangle]
 // FIXME: Unmangle and make private again
 pub static TEST_MUTEX: Mutex<u32> = Mutex::new(0);
+
+// List of methods we'll likely need from port layer
+extern {
+  fn yield_cpu();
+  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&Args), args: Option<&Box<Args>>) -> usize;
+  fn start_first_task();
+  fn in_kernel_mode() -> bool;
+}
 
 #[no_mangle]
 pub fn start() -> ! {
@@ -84,7 +93,7 @@ pub fn start() -> ! {
   let handle = task::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
   args = args.add_arg(&handle as *const _ as usize);
   task::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
-  task::start_first_task();
+  task::start_scheduler();
 
   loop { unsafe { arm::asm::bkpt() }; }
 }

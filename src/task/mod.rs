@@ -226,6 +226,7 @@ impl TaskControl {
     const INITIAL_XPSR: usize = 0x0100_0000;
     unsafe {
       let mut stack_mut = Volatile::new(self.stack as *const usize);
+      //self.stack = ::initialize_stack(stack_mut, code, self.args.as_ref());
       // Offset added to account for way MCU uses stack on entry/exit of interrupts
       stack_mut -= 4;
       stack_mut.store(INITIAL_XPSR); /* xPSR */
@@ -364,6 +365,7 @@ mod imp {
 
   /// Yield the current task to the scheduler so another task can run.
   pub fn yield_task() {
+    //unsafe { ::yield_cpu() };
     let scb = system_control::scb();
     scb.set_pend_sv();
   }
@@ -426,7 +428,7 @@ mod imp {
   }
 
   /// Start running the first task in the queue
-  pub fn start_first_task() {
+  pub fn start_scheduler() {
     unsafe {
       init_idle_task();
       for i in Priority::all() {
@@ -437,7 +439,7 @@ mod imp {
         }
       }
       debug_assert!(CURRENT_TASK.is_some());
-
+      //::start_first_task();
       #[cfg(target_arch="arm")]
       asm!(
         concat!(
@@ -484,6 +486,7 @@ mod priv_imp {
   #[allow(unused_assignments)] // So testing doesn't have uninitialized variable error
   pub fn is_kernel_running() -> bool {
     unsafe {
+      //::in_kernel_mode();
       let mut stack_mask: usize = 0;
       #[cfg(target_arch="arm")]
       asm!("mrs $0, CONTROL\n" /* get the stack control mask */
