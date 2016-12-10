@@ -7,7 +7,7 @@
 //! clocks, setting clock configurations and the reset flags that are set on a reset.
 
 use super::Control;
-use arm::asm::dmb;
+use arm::asm::dsb;
 use volatile::Volatile;
 pub use self::clock_control::Clock;
 pub use self::enable::Peripheral;
@@ -77,9 +77,9 @@ impl RCC {
   pub fn set_system_clock_source(&self, clock: Clock) {
     self.cfgr.set_system_clock_source(clock);
     // We need a memory barrier here since the hardware is writing to the system clock bit
-    // If we access the register too fast the old value could still be in the cache un-updated, 
-    // and we could get the wrong system clock when we calculate the clock rate.
-    unsafe { dmb(); }
+    // the barrier ensures that the write to the control register takes effect before we
+    // try to access the clock rate
+    unsafe { dsb(); }
     clock_control::clock_rate::update_system_clock_rate();
   }
 

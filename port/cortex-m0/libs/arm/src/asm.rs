@@ -9,27 +9,56 @@ pub use self::imp::*;
 mod imp {
   #[inline(always)]
   pub unsafe fn dmb() {
-    asm!("dmb");
+    asm!("dmb"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
+  }
+
+  #[inline(always)]
+  pub unsafe fn dsb() {
+    asm!("dsb"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 
   #[inline(always)]
   pub unsafe fn bkpt() {
-    asm!("bkpt");
+    asm!("bkpt"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 
   #[inline(always)]
   pub unsafe fn enable_interrupts() {
-    asm!("cpsie i");
+    asm!("cpsie i"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 
   #[inline(always)]
   pub unsafe fn disable_interrupts() {
-    asm!("cpsid i");
+    asm!("cpsid i"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 
   #[inline(always)]
   pub unsafe fn wfi() {
-    asm!("wfi");
+    asm!("wfi"
+      : /* no outputs */
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
 
   pub unsafe fn get_control() -> usize {
@@ -47,6 +76,9 @@ mod imp {
 mod imp {
   #[inline(always)]
   pub unsafe fn dmb() {}
+
+  #[inline(always)]
+  pub unsafe fn dsb() {}
 
   #[inline(always)]
   pub unsafe fn bkpt() {}
