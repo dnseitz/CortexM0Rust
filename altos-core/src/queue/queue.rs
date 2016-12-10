@@ -3,15 +3,27 @@
 //
 // Created by Daniel Seitz on 12/2/16
 
+//! A collection of items that can be accessed through a FIFO interface.
+
 use alloc::boxed::Box;
 use super::Node;
 
+/// A collection that provides FIFO queue functionality.
 pub struct Queue<T> {
   head: Option<Box<Node<T>>>,
   tail: *mut Node<T>,
 }
 
 impl<T> Queue<T> {
+  /// Creates an empty `Queue`.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::Queue;
+  ///
+  /// let queue = Queue::<usize>::new();
+  /// ```
   pub const fn new() -> Self {
     Queue { 
       head: None,
@@ -19,8 +31,20 @@ impl<T> Queue<T> {
     }
   }
 
-  /// Place a new item onto the end of the queue.
+  /// Places a new item onto the end of the queue.
+  ///
   /// O(1) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  ///
+  /// queue.enqueue(Box::new(Node::new(0)));
+  /// ```
   pub fn enqueue(&mut self, elem: Box<Node<T>>) {
     let mut new_tail = elem;
     // Probably not necessary...
@@ -40,8 +64,23 @@ impl<T> Queue<T> {
     self.tail = raw_tail;
   }
 
-  /// Take an item off of the front of the queue. If there are no items in the queue returns None.
+  /// Takes an item off of the front of the queue, if there are no items in the queue returns None.
+  ///
   /// O(1) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  ///
+  /// queue.enqueue(Box::new(Node::new(0)));
+  ///
+  /// assert!(queue.dequeue().is_some());
+  /// assert!(queue.dequeue().is_none());
+  /// ```
   pub fn dequeue(&mut self) -> Option<Box<Node<T>>> {
     self.head.take().map(|mut head| {
       self.head = head.next.take();
@@ -53,8 +92,26 @@ impl<T> Queue<T> {
     })
   }
   
-  /// Remove all elements matching `predicate` and return them in a new queue
+  /// Removes all elements matching `predicate` and returns them in a new queue
+  ///
   /// O(n) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  ///
+  /// queue.enqueue(Box::new(Node::new(0)));
+  /// queue.enqueue(Box::new(Node::new(1)));
+  ///
+  /// let removed = queue.remove(|n| *n == 0);
+  ///
+  /// assert!(!queue.is_empty());
+  /// assert!(!removed.is_empty());
+  /// ```
   pub fn remove<F: Fn(&T) -> bool>(&mut self, predicate: F) -> Queue<T> {
     let mut matching = Queue::new();
     let mut not_matching = Queue::new();
@@ -73,8 +130,26 @@ impl<T> Queue<T> {
     matching
   }
   
-  /// Append all the elements of `queue` onto self.
+  /// Appends all the elements of `queue` onto `self`.
+  ///
   /// O(1) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue1 = Queue::new();
+  /// let mut queue2 = Queue::new();
+  ///
+  /// queue1.enqueue(Box::new(Node::new(0)));
+  /// queue2.enqueue(Box::new(Node::new(1)));
+  /// 
+  /// queue1.append(queue2);
+  ///
+  /// assert!(!queue1.is_empty());
+  /// ```
   pub fn append(&mut self, mut queue: Queue<T>) {
     if !self.tail.is_null() {
       unsafe {
@@ -88,8 +163,23 @@ impl<T> Queue<T> {
     self.tail = queue.tail;
   }
 
-  /// Modify all the elements of the queue with the block passed in.
+  /// Modifies all the elements of the queue with the block passed in.
+  ///
   /// O(n) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  ///
+  /// queue.enqueue(Box::new(Node::new(0)));
+  /// queue.enqueue(Box::new(Node::new(1)));
+  /// 
+  /// queue.modify_all(|n| *n = *n + 1);
+  /// ```
   #[deprecated(since="0.1.0", note="Use `iter_mut()` instead")]
   pub fn modify_all<F: Fn(&mut T)>(&mut self, block: F) {
     let mut current = self.head.as_mut();
@@ -99,26 +189,112 @@ impl<T> Queue<T> {
     }
   }
 
-  /// Remove all the elements from `self` and return it in a Queue struct.
+  /// Removes all the elements from `self` and returns them in a new `Queue`.
+  ///
   /// O(1) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  ///
+  /// queue.enqueue(Box::new(Node::new(0)));
+  /// queue.enqueue(Box::new(Node::new(1)));
+  /// 
+  /// let removed = queue.remove_all();
+  ///
+  /// assert!(queue.is_empty());
+  /// assert!(!removed.is_empty());
+  /// ```
   pub fn remove_all(&mut self) -> Queue<T> {
     ::core::mem::replace(self, Queue::new())
   }
 
-  /// Return true if the list is empty, false otherwise.
+  /// Checks if the queue is empty, returns true if it is empty, false otherwise.
+  ///
   /// O(1) algorithmic time
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::Queue;
+  ///
+  /// let queue = Queue::<usize>::new();
+  ///
+  /// assert!(queue.is_empty());
+  /// ```
   pub fn is_empty(&self) -> bool {
     self.head.is_none()
   }
 
+  /// Returns an iterator over the values of `self` consuming `self`.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  /// queue.enqueue(Box::new(Node::new(1)));
+  /// queue.enqueue(Box::new(Node::new(2)));
+  /// queue.enqueue(Box::new(Node::new(3)));
+  ///
+  /// let mut iter = queue.into_iter();
+  /// assert_eq!(iter.next().map(|n| **n), Some(1));
+  /// assert_eq!(iter.next().map(|n| **n), Some(2));
+  /// assert_eq!(iter.next().map(|n| **n), Some(3));
+  /// assert!(iter.next().is_none());
+  /// ```
   pub fn into_iter(self) -> IntoIter<T> {
     IntoIter(self)
   }
 
+  /// Returns an iterator over references to the values in `self`.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  /// queue.enqueue(Box::new(Node::new(1)));
+  /// queue.enqueue(Box::new(Node::new(2)));
+  /// queue.enqueue(Box::new(Node::new(3)));
+  ///
+  /// let mut iter = queue.iter();
+  /// assert_eq!(iter.next(), Some(&1));
+  /// assert_eq!(iter.next(), Some(&2));
+  /// assert_eq!(iter.next(), Some(&3));
+  /// assert!(iter.next().is_none());
+  /// ```
   pub fn iter(&self) -> Iter<T> {
     Iter { next: self.head.as_ref().map(|node| &**node) }
   }
 
+  /// Returns an iterator over mutable references to the values in `self`.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::queue::{Node, Queue};
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// let mut queue = Queue::new();
+  /// queue.enqueue(Box::new(Node::new(1)));
+  /// queue.enqueue(Box::new(Node::new(2)));
+  /// queue.enqueue(Box::new(Node::new(3)));
+  ///
+  /// let mut iter = queue.iter_mut();
+  /// assert_eq!(iter.next(), Some(&mut 1));
+  /// assert_eq!(iter.next(), Some(&mut 2));
+  /// assert_eq!(iter.next(), Some(&mut 3));
+  /// assert!(iter.next().is_none());
+  /// ```
   pub fn iter_mut(&mut self) -> IterMut<T> {
     IterMut { next: self.head.as_mut().map(|node| &mut **node) }
   }
@@ -135,6 +311,7 @@ impl<T> Drop for Queue<T> {
   }
 }
 
+/// An iterator over `Queue` that consumes the values in the collection.
 pub struct IntoIter<T>(Queue<T>);
 
 impl<T> Iterator for IntoIter<T> {
@@ -144,6 +321,7 @@ impl<T> Iterator for IntoIter<T> {
   }
 }
 
+/// An iterator over `Queue` that holds references to the values in the collection.
 pub struct Iter<'a, T: 'a> {
   next: Option<&'a Node<T>>,
 }
@@ -158,6 +336,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
   }
 }
 
+/// An iterator over `Queue` that holds mutable references to the values in the collection.
 pub struct IterMut<'a, T: 'a> {
   next: Option<&'a mut Node<T>>,
 }

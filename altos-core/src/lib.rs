@@ -11,6 +11,7 @@
 #![feature(collections)]
 #![feature(drop_types_in_const)]
 #![feature(cfg_target_has_atomic)]
+#![warn(missing_docs)]
 #![no_std]
 
 #[cfg(not(test))]

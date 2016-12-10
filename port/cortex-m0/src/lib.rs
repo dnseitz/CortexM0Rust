@@ -188,6 +188,7 @@ extern {
 #[no_mangle]
 pub fn init() -> ! {
   // TODO: set pendsv and systick interrupts to lowest priority
+  unsafe { arm::asm::disable_interrupts() };
   init_data_segment();
   init_bss_segment();
   init_heap();
@@ -265,6 +266,7 @@ fn init_heap() {
         : "={r0}"(heap_start), "={r2}"(heap_size)
         : /* no inputs */
         : "r0", "r1", "r2"
+        : "volatile"
     );
     altos_core::init::init_heap(heap_start, heap_size);
   }

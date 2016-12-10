@@ -17,6 +17,8 @@ use core::ops::Index;
 use sync::CriticalSection;
 
 const NUM_PRIORITIES: usize = 4;
+
+/// An alias for the channel to sleep on that will never be awoken
 pub const FOREVER_CHAN: usize = 0;
 
 #[no_mangle]
@@ -27,7 +29,6 @@ static PRIORITY_QUEUES: [SyncQueue<TaskControl>; NUM_PRIORITIES] = [SyncQueue::n
                                                                     SyncQueue::new(), 
                                                                     SyncQueue::new(), 
                                                                     SyncQueue::new()];
-static SLEEP_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
 static DELAY_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
 static OVERFLOW_DELAY_QUEUE: SyncQueue<TaskControl> = SyncQueue::new();
 
@@ -58,16 +59,11 @@ pub unsafe fn switch_context() {
           panic!("switch_context - The current task's stack overflowed!");
         }
         if running.state == State::Blocked {
-          if running.wchan != FOREVER_CHAN {
-            SLEEP_QUEUE.enqueue(running);
+          if running.overflowed {
+            OVERFLOW_DELAY_QUEUE.enqueue(running);
           }
           else {
-            if running.overflowed {
-              OVERFLOW_DELAY_QUEUE.enqueue(running);
-            }
-            else {
-              DELAY_QUEUE.enqueue(running);
-            }
+            DELAY_QUEUE.enqueue(running);
           }
         }
         else {
@@ -95,9 +91,32 @@ pub unsafe fn switch_context() {
   }
 }
 
-/// Create a new task and put it into the task queue for running. The stack depth is how many bytes
-/// should be allocated for the stack, if there is not enough space to allocate the stack the
-/// kernel will panic with an out of memory (oom) error.
+/// Creates a new task and put it into the task queue for running. It returns a `TaskHandle` to
+/// monitor the task with
+///
+/// `new_task` takes several arguments, a `fn(&Args)` pointer which specifies the code to run for
+/// the task, an `Args` argument for the arguments that will be passed to the task, a `usize`
+/// argument for how much space should be allocated for the task's stack, a `Priority` argument for
+/// the priority that the task should run at, and a `&str` argument to give the task a readable
+/// name.
+///
+/// # Examples
+///
+/// ```no_run
+/// use altos_core::task::{start_scheduler, new_task, Priority};
+/// use altos_core::task::args::Args;
+///
+/// // Create the task and hold onto the handle
+/// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
+///
+/// // Start running the task
+/// start_scheduler(); 
+///
+/// fn test_task(_args: &Args) {
+///   // Do stuff here...
+///   loop {}
+/// }
+/// ```
 #[inline(never)]
 pub fn new_task(code: fn(&Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
   // Make sure the task is allocated in one fell swoop
@@ -111,15 +130,64 @@ pub fn new_task(code: fn(&Args), args: Args, stack_depth: usize, priority: Prior
 }
 
 /// Yield the current task to the scheduler so another task can run.
+///
+/// # Examples
+///
+/// ```no_run
+/// use altos_core::task::yield_task;
+/// use altos_core::task::args::Args;
+///
+/// fn test_task(_args: &Args) {
+///   loop {
+///     // Do some important work...
+///   
+///     // Okay, we're done...
+///     yield_task();
+///     // Go back and do it again
+///   }
+/// }
+/// ```
 pub fn yield_task() {
   unsafe { ::yield_cpu() };
 }
 
+/// Put the current task to sleep, waiting on a channel to be woken up.
+///
+/// `sleep` takes a `usize` argument that acts as an identifier for when to wake up the task. The
+/// task will sleep indefinitely if no wakeup signal is sent.
+///
+/// # Examples
+///
+/// ```no_run
+/// use altos_core::task::sleep;
+/// use altos_core::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
+///
+/// static flag: AtomicBool = ATOMIC_BOOL_INIT;
+///
+/// while !flag.load(Ordering::SeqCst) {
+///   // Block until some other thread wakes us up
+///   sleep(&flag as *const _ as usize);
+/// }
+/// ```
 pub fn sleep(wchan: usize) {
   sleep_for(wchan, 0);
 }
 
+/// Put the current task to sleep with a timeout, waiting on a channel to be woken up.
+///
+/// `sleep_for` takes a `usize` argument that acts as an identifier to wake up the task. It also
+/// takes a second `usize` argument for the maximum time it should sleep before waking.
+///
+/// # Examples
+///
+/// ```no_run
+/// use altos_core::task::{sleep_for, FOREVER_CHAN};
+///
+/// // Sleep for 300 ticks
+/// sleep_for(FOREVER_CHAN, 300);
+/// ```
 pub fn sleep_for(wchan: usize, delay: usize) {
+  let critical_guard = CriticalSection::begin();
   unsafe {
     if let Some(current) = CURRENT_TASK.as_mut() {
       let ticks = Timer::get_current().msec;
@@ -137,9 +205,13 @@ pub fn sleep_for(wchan: usize, delay: usize) {
   yield_task();
 }
 
-
+/// Wake up all tasks sleeping on a channel.
+///
+/// `wake` takes 
 pub fn wake(wchan: usize) {
-  let to_wake: Queue<TaskControl> = SLEEP_QUEUE.remove(|task| task.wchan == wchan);
+  let critical_guard = CriticalSection::begin();
+  let mut to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.wchan == wchan);
+  to_wake.append(OVERFLOW_DELAY_QUEUE.remove(|task| task.wchan == wchan));
   for mut task in to_wake.into_iter() {
     task.wchan = 0;
     task.state = State::Ready;
@@ -152,7 +224,7 @@ pub fn system_tick() {
   if !is_kernel_running() {
     panic!("alarm_wake - This function should only be called from kernel code!");
   }
-
+  let critical_guard = CriticalSection::begin();
   Timer::tick();
   alarm_wake();
 
