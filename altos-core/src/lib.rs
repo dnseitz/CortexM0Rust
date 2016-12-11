@@ -38,7 +38,7 @@ use alloc::boxed::Box;
 #[allow(improper_ctypes)] // We're only interfacing with other Rust modules, but we can't have any explicit circular dependencies
 extern "Rust" {
   fn yield_cpu();
-  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&Args), args: Option<&Box<Args>>) -> usize;
+  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&Args), args: &Box<Args>) -> usize;
   fn start_first_task();
   fn in_kernel_mode() -> bool;
 
