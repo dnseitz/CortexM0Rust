@@ -26,23 +26,36 @@ pub static TEST_MUTEX: Mutex<u32> = Mutex::new(0);
 pub fn application_entry() -> ! {
   let mut args = Builder::new(1);
 
+  args = args.add_arg(10 * return_a_value());
+
   //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
   //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
   //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
-  //task::new_task(mutex_task_1, ArgsBuilder::empty(), 1024, task::Priority::Critical, "first mutex task");
-  //task::new_task(mutex_task_2, ArgsBuilder::empty(), 1024, task::Priority::Critical, "second mutex task");
+  task::new_task(mutex_task_1, args.finalize(), 1024, task::Priority::Critical, "first mutex task");
+  task::new_task(mutex_task_2, Args::empty(), 1024, task::Priority::Critical, "second mutex task");
   //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
   //task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
   //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
   //task::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
   //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
   //task::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
-  let handle = task::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
-  args = args.add_arg(&handle as *const _ as usize);
-  task::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
+  //let handle = task::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
+  //args = args.add_arg(&handle as *const _ as usize);
+  //task::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
   task::start_scheduler();
 
   loop { unsafe { arm::asm::bkpt() }; }
+}
+
+#[inline(never)]
+fn return_a_value() -> usize {
+  let guard = TEST_MUTEX.lock();
+  if *guard == 0 {
+    10
+  }
+  else {
+    20
+  }
 }
 
 fn delay_task() {

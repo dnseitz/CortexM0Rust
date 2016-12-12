@@ -4,6 +4,47 @@
 // Created by Daniel Seitz on 11/30/16
 
 #[no_mangle]
+#[naked]
+#[cfg(target_arch="arm")]
+pub unsafe extern fn __aeabi_lmul(num1: u64, num2: u64) {
+  // TODO: This function needs a good hard looking at...
+  asm!(
+    concat!(
+    "push        {r4, lr}\n",
+    "muls        r1, r2 \n",
+    "muls        r3, r0\n", 
+    "adds        r1, r1, r3\n",
+
+    "lsrs        r3, r0, #16\n",
+    "lsrs        r4, r2, #16\n",
+    "muls        r3, r4\n",
+    "adds        r1, r1, r3\n",
+
+    "lsrs        r3, r0, #16\n",
+    "uxth        r0, r0\n",
+    "uxth        r2, r2\n",
+    "muls        r3, r2\n",
+    "muls        r4, r0\n",
+    "muls        r0, r2\n",
+
+    "movs        r2, #0\n",
+    "adds        r3, r3, r4\n",
+    "adcs        r2, r2\n",
+    "lsls        r2, #16\n",
+    "adds        r1, r1, r2\n",
+
+    "lsls        r2, r3, #16\n",
+    "lsrs        r3, #16\n",
+    "adds        r0, r0, r2\n",
+    "adcs        r1, r1, r3\n",
+    "pop        {r4, pc}\n")
+    : /* no outputs */
+    : /* no inputs */
+    : /* no clobbers */
+    : "volatile");
+}
+
+#[cfg(not(target_arch="arm"))]
 pub unsafe extern fn __aeabi_lmul(num1: u64, num2: u64) -> u64 {
   let mut res = 0;
   let (higher, mut lower) = if num1 > num2 { (num1, num2) } else { (num2, num1) };

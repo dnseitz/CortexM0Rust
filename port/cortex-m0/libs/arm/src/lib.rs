@@ -5,6 +5,7 @@
 
 #![no_std]
 #![feature(asm)]
+#![feature(naked_functions)]
 
 mod math;
 mod mem;
