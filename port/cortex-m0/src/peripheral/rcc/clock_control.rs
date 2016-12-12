@@ -11,8 +11,8 @@ pub mod clock_rate {
   static mut CLOCK_RATE: usize = 0;
 
   pub fn get_system_clock_rate() -> usize {
-    unsafe { 
-      CLOCK_RATE 
+    unsafe {
+      CLOCK_RATE
     }
   }
 
@@ -73,7 +73,7 @@ impl ClockControl {
       cr2: CR2::new(base_addr),
     }
   }
-  
+
   /// Enable a clock
   pub fn enable_clock(&self, clock: Clock) {
     match clock {
@@ -139,7 +139,7 @@ impl CR {
       Clock::HSI => 1 << 0,
       _ => panic!("CR::enable_clock - argument clock is not controlled by this register!"),
     };
-    
+
     unsafe {
       let mut reg = self.addr();
       if enable {

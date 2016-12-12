@@ -2,6 +2,7 @@
 
 use super::super::Register;
 
+/// Word length can be 7, 8, or 9 bits.
 #[derive(Copy, Clone)]
 pub enum WordLength {
     Seven,
@@ -9,16 +10,17 @@ pub enum WordLength {
     Nine,
 }
 
+/// Three USART control registers.
 #[derive(Copy, Clone)]
-pub struct USARTControl {
+pub struct USARTCRx {
     cr1: CR1,
     cr2: CR2,
     cr3: CR3,
 }
 
-impl USARTControl {
+impl USARTCRx {
     pub fn new(base_addr: usize) -> Self {
-        USARTControl {
+        USARTCRx {
             cr1: CR1::new(base_addr),
             cr2: CR2::new(base_addr),
             cr3: CR3::new(base_addr),
@@ -50,6 +52,21 @@ impl Register for CR1 {
 }
 
 impl CR1 {
+    fn switch(&self, flip: bool) {
+        const UE: usize = 0;
+
+        let mask = match flip {
+            false => 0,
+            true => 1,
+        };
+
+        unsafe {
+            let mut reg = self.addr();
+            *reg &= !(UE);
+            *reg |= mask;
+        }
+    }
+
     fn set_word_length(&self, length: WordLength) {
         const M0: usize = 1 << 12;
         const M1: usize = 1 << 28;
@@ -88,8 +105,7 @@ impl Register for CR2 {
 }
 
 #[derive(Copy, Clone)]
-struct CR3 {
-    base_addr: usize,
+struct CR3 { base_addr: usize,
 }
 
 impl Register for CR3 {
@@ -103,6 +119,39 @@ impl Register for CR3 {
 
     fn mem_offset(&self) -> usize {
         0x8
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct USARTBR {
+    br: BR,
+}
+
+impl USARTBR {
+    pub fn new(base_addr: usize) -> Self {
+        USARTBR { br: BR::new(base_addr) }
+    }
+
+    pub fn set_baud_rate(&self, /* arg?? */) {
+        // Need to set baud rate...
+    }
+}
+
+struct BR {
+    base_addr: usize,
+}
+
+impl Register for BR {
+    fn new(base_addr: usize) -> Self {
+        BR { base_addr: base_addr }
+    }
+
+    fn base_addr(&self) -> usize {
+        self.base_addr
+    }
+
+    fn mem_offset(&self) -> usize {
+        0x0C
     }
 }
 
