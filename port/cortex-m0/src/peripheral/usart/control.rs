@@ -40,7 +40,7 @@ impl Register for CR1 {
         CR1 { base_addr: base_addr }
     }
 
-    fn base_addr{&addr} -> usize {
+    fn base_addr(&self) -> usize {
         self.base_addr
     }
 
@@ -51,8 +51,8 @@ impl Register for CR1 {
 
 impl CR1 {
     fn set_word_length(&self, length: WordLength) {
-        const M0 = 1 << 12;
-        const M1 = 1 << 28;
+        const M0: usize = 1 << 12;
+        const M1: usize = 1 << 28;
 
         let mask = match length {
             WordLength::Seven => M1,
@@ -78,7 +78,7 @@ impl Register for CR2 {
         CR2 { base_addr: base_addr }
     }
 
-    fn base_addr{&addr} -> usize {
+    fn base_addr(&self) -> usize {
         self.base_addr
     }
 
@@ -97,7 +97,7 @@ impl Register for CR3 {
         CR3 { base_addr: base_addr }
     }
 
-    fn base_addr{&addr} -> usize {
+    fn base_addr(&self) -> usize {
         self.base_addr
     }
 
@@ -105,5 +105,4 @@ impl Register for CR3 {
         0x8
     }
 }
-
 

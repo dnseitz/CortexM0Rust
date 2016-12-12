@@ -2,21 +2,22 @@
 // AltOSRust
 //
 // Created by Daniel Seitz on 11/30/16
-mod usart_control;
+mod control;
 
 use super::Control;
 use volatile::Volatile;
 use peripheral::{gpio, rcc};
+use self::control::USARTControl;
 
 fn init() {
   let rcc = rcc::rcc();
   let cr = rcc.get_system_clock_rate();
 
-  gpio::GPIO::enable(gpio::GPIOGroup::A);
+  gpio::GPIO::enable(gpio::Group::A);
   rcc.enable_peripheral(rcc::Peripheral::USART1);
 
-  let pa9 = gpio::GPIOPort::new(9, gpio::GPIOGroup::A);
-  let pa10 = gpio::GPIOPort::new(10, gpio::GPIOGroup::A);
+  let pa9 = gpio::Port::new(9, gpio::Group::A);
+  let pa10 = gpio::Port::new(10, gpio::Group::A);
 
   pa9.set_function(gpio::AlternateFunction::One);
   pa10.set_function(gpio::AlternateFunction::One);
@@ -49,7 +50,7 @@ struct USART {
 
 impl Control for USART {
     unsafe fn mem_addr(&self) -> Volatile<usize> {
-        Volatile::new(self.mem_addr as *usize)
+        Volatile::new(self.mem_addr as *const usize)
     }
 }
 
@@ -63,8 +64,8 @@ impl USART {
                     mem_addr: USART1,
                     control: USARTControl::new(USART1),
                 },
-            USARTx::Two => USART2 {
-                    mem_addr = USART2,
+            USARTx::Two => USART {
+                    mem_addr: USART2,
                     control: USARTControl::new(USART2),
                 },
         }
