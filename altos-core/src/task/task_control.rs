@@ -34,6 +34,11 @@ pub enum Priority {
   /// Most tasks should be given this priority. The task can be preempted at any time so should not
   /// rely on any operation to be atomic unless specifically marked in a critical section.
   Normal = 1,
+
+  /// The minimal task priority.
+  ///
+  /// These tasks should be purely optional for the system to run. They will only be run if there
+  /// are no other tasks to run, so on some systems they may never run at all.
   Low = 2,
 
   #[doc(hidden)]

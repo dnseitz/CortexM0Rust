@@ -9,6 +9,10 @@ use alloc::boxed::Box;
 
 type RawPtr = usize;
 
+/// An Args Builder.
+///
+/// Use this to construct a new list of arguments to pass into a task. The arguments should be
+/// either a pointer to an object or a word length integer.
 pub struct Builder {
   cap: usize,
   len: usize,
@@ -28,7 +32,7 @@ impl Builder {
     }
   }
 
-  #[inline(never)]
+  //#[inline(never)]
   pub fn add_arg(mut self, arg: RawPtr) -> Self {
     if self.len >= self.cap {
       panic!("ArgsBuilder::add_arg - added too many arguments!");
