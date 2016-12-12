@@ -7,7 +7,8 @@ mod control;
 use super::Control;
 use volatile::Volatile;
 use peripheral::{gpio, rcc};
-use self::control::USARTCRx;
+use self::control::USARTCR;
+use self::baudr::USARTBR;
 
 fn init() {
   let rcc = rcc::rcc();
@@ -45,8 +46,8 @@ enum USARTx {
 
 struct USART {
     mem_addr: usize,
-    control: USARTCRx,
-    baud: BR,
+    control: USARTCR,
+    baud: USARTBR,
 }
 
 impl Control for USART {
@@ -63,12 +64,12 @@ impl USART {
         match x {
             USARTx::One => USART {
                     mem_addr: USART1,
-                    control: USARTCRx::new(USART1),
+                    control: USARTCR::new(USART1),
                     baud: USARTBR::new(USART1),
                 },
             USARTx::Two => USART {
                     mem_addr: USART2,
-                    control: USARTCRx::new(USART2),
+                    control: USARTCR::new(USART2),
                     baud: USARTBR::new(USART2),
                 },
         }

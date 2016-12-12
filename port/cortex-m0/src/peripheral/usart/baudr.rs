@@ -1,3 +1,6 @@
+// Daniel Seitz and RJ Russell
+
+use super::super::Register;
 
 #[derive(Copy, Clone)]
 pub struct USARTBR {
@@ -9,11 +12,12 @@ impl USARTBR {
         USARTBR { br: BR::new(base_addr) }
     }
 
-    pub fn set_baud_rate(&self, /* arg?? */) {
+    pub fn set_baud_rate(&self /* arg?? */) {
         // Need to set baud rate...
     }
 }
 
+#[derive(Copy, Clone)]
 struct BR {
     base_addr: usize,
 }

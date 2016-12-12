@@ -1,4 +1,4 @@
-
+// Daniel Seitz and RJ Russell
 
 use super::super::Register;
 
@@ -12,15 +12,15 @@ pub enum WordLength {
 
 /// Three USART control registers.
 #[derive(Copy, Clone)]
-pub struct USARTCRx {
+pub struct USARTCR {
     cr1: CR1,
     cr2: CR2,
     cr3: CR3,
 }
 
-impl USARTCRx {
+impl USARTCR {
     pub fn new(base_addr: usize) -> Self {
-        USARTCRx {
+        USARTCR {
             cr1: CR1::new(base_addr),
             cr2: CR2::new(base_addr),
             cr3: CR3::new(base_addr),
@@ -52,6 +52,7 @@ impl Register for CR1 {
 }
 
 impl CR1 {
+    /*
     fn switch(&self, flip: bool) {
         const UE: usize = 0;
 
@@ -66,7 +67,7 @@ impl CR1 {
             *reg |= mask;
         }
     }
-
+    */
     fn set_word_length(&self, length: WordLength) {
         const M0: usize = 1 << 12;
         const M1: usize = 1 << 28;
