@@ -16,8 +16,8 @@ fn init() {
   gpio::GPIO::enable(gpio::Group::A);
   rcc.enable_peripheral(rcc::Peripheral::USART1);
 
-  let pa9 = gpio::Port::new(9, gpio::Group::A);
-  let pa10 = gpio::Port::new(10, gpio::Group::A);
+  let mut pa9 = gpio::Port::new(9, gpio::Group::A);
+  let mut pa10 = gpio::Port::new(10, gpio::Group::A);
 
   pa9.set_function(gpio::AlternateFunction::One);
   pa10.set_function(gpio::AlternateFunction::One);

@@ -12,7 +12,7 @@ pub enum Type {
 }
 
 impl Field for Type {
-  fn mask(&self) -> u32 {
+  fn mask(&self) -> usize {
     match *self {
       Type::PushPull => 0b0,
       Type::OpenDrain => 0b1,
@@ -21,7 +21,7 @@ impl Field for Type {
 }
 
 impl Type {
-  fn from_mask(mask: u32) -> Self {
+  fn from_mask(mask: usize) -> Self {
     match mask {
       0b0 => Type::PushPull,
       0b1 => Type::OpenDrain,
@@ -32,19 +32,19 @@ impl Type {
 
 #[derive(Copy, Clone)]
 pub struct OTYPER {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for OTYPER {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     OTYPER { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x04
   }
 }

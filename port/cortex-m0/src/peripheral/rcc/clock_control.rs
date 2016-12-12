@@ -8,18 +8,18 @@
 use super::super::Register;
 
 pub mod clock_rate {
-  static mut CLOCK_RATE: u32 = 0;
+  static mut CLOCK_RATE: usize = 0;
 
-  pub fn get_system_clock_rate() -> u32 {
+  pub fn get_system_clock_rate() -> usize {
     unsafe { 
       CLOCK_RATE 
     }
   }
 
   pub fn update_system_clock_rate() {
-    const HSI_VALUE: u32 = 8_000_000;
-    const HSE_VALUE: u32 = 8_000_000;
-    const HSI48_VALUE: u32 = 48_000_000;
+    const HSI_VALUE: usize = 8_000_000;
+    const HSE_VALUE: usize = 8_000_000;
+    const HSI48_VALUE: usize = 48_000_000;
     use super::Clock;
     use super::super::super::systick;
 
@@ -29,9 +29,9 @@ pub mod clock_rate {
       Clock::HSE => HSE_VALUE,
       Clock::HSI48 => HSI48_VALUE,
       Clock::PLL => {
-        let multiplier = rcc.get_pll_multiplier() as u32;
+        let multiplier = rcc.get_pll_multiplier() as usize;
         let source = rcc.get_pll_source();
-        let prediv_factor = rcc.get_pll_prediv_factor() as u32;
+        let prediv_factor = rcc.get_pll_prediv_factor() as usize;
 
         match source {
           Clock::HSE => (HSE_VALUE/prediv_factor) * multiplier,
@@ -67,7 +67,7 @@ pub struct ClockControl {
 }
 
 impl ClockControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     ClockControl {
       cr: CR::new(base_addr),
       cr2: CR2::new(base_addr),
@@ -111,19 +111,19 @@ impl ClockControl {
 /// argument to any of the methods that take a clock argument the kernel will panic.
 #[derive(Copy, Clone)]
 pub struct CR {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for CR {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     CR { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x0
   }
 }
@@ -188,19 +188,19 @@ impl CR {
 /// argument to any of the methods that take a clock argument the kernel will panic.
 #[derive(Copy, Clone)]
 pub struct CR2 {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for CR2 {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     CR2 { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x34
   }
 }

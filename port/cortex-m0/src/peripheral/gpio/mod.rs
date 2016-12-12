@@ -38,7 +38,7 @@ pub enum Group {
 /// it.
 #[derive(Copy, Clone)]
 pub struct GPIO {
-  mem_addr: u32,
+  mem_addr: usize,
   moder: moder::MODER,
   otyper: otyper::OTYPER,
   bsrr: bsrr::BSRR,
@@ -48,8 +48,8 @@ pub struct GPIO {
 }
 
 impl Control for GPIO {
-  unsafe fn mem_addr(&self) -> Volatile<u32> {
-    Volatile::new(self.mem_addr as *const u32)
+  unsafe fn mem_addr(&self) -> Volatile<usize> {
+    Volatile::new(self.mem_addr as *const usize)
   }
 }
 
@@ -63,7 +63,7 @@ impl GPIO {
     }
   }
 
-  fn new(mem_addr: u32) -> GPIO {
+  fn new(mem_addr: usize) -> GPIO {
     GPIO { 
       mem_addr: mem_addr,
       moder: moder::MODER::new(mem_addr),

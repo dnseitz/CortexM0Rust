@@ -18,7 +18,7 @@ pub enum AlternateFunction {
 }
 
 impl Field for AlternateFunction {
-  fn mask(&self) -> u32 {
+  fn mask(&self) -> usize {
     match *self {
       AlternateFunction::Zero => 0b0000,
       AlternateFunction::One => 0b0001,
@@ -33,7 +33,7 @@ impl Field for AlternateFunction {
 }
 
 impl AlternateFunction {
-  fn from_mask(mask: u32) -> Self {
+  fn from_mask(mask: usize) -> Self {
     match mask {
       0b0000 => AlternateFunction::Zero,
       0b0001 => AlternateFunction::One,
@@ -55,7 +55,7 @@ pub struct AlternateFunctionControl {
 }
 
 impl AlternateFunctionControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     AlternateFunctionControl {
       afrl: AFRL::new(base_addr),
       afrh: AFRH::new(base_addr),
@@ -83,19 +83,19 @@ impl AlternateFunctionControl {
 
 #[derive(Copy, Clone)]
 struct AFRL {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for AFRL {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     AFRL { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x20
   }
 }
@@ -131,19 +131,19 @@ impl AFRL {
 
 #[derive(Copy, Clone)]
 struct AFRH {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for AFRH {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     AFRH { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x24
   }
 }

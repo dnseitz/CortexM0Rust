@@ -12,21 +12,21 @@ mod priority;
 
 #[derive(Copy, Clone)]
 pub struct NVIC {
-  mem_addr: u32,
+  mem_addr: usize,
   enable: enable::EnableControl,
   pending: pending::PendingControl,
   priority: priority::PriorityControl,
 }
 
 impl Control for NVIC {
-  unsafe fn mem_addr(&self) -> Volatile<u32> {
-    Volatile::new(self.mem_addr as *const u32)
+  unsafe fn mem_addr(&self) -> Volatile<usize> {
+    Volatile::new(self.mem_addr as *const usize)
   }
 }
 
 impl NVIC {
   pub fn nvic() -> Self {
-    const NVIC_ADDR: u32 = 0xE000E100;
+    const NVIC_ADDR: usize = 0xE000E100;
     NVIC {
       mem_addr: NVIC_ADDR,
       enable: enable::EnableControl::new(NVIC_ADDR),

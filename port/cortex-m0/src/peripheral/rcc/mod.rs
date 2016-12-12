@@ -23,21 +23,21 @@ pub fn rcc() -> RCC {
 /// Reset and Clock Controller
 #[derive(Copy, Clone)]
 pub struct RCC {
-  mem_addr: u32,
+  mem_addr: usize,
   cr: clock_control::ClockControl,
   cfgr: config::ConfigControl,
   enr: enable::PeripheralControl,
 }
 
 impl Control for RCC {
-  unsafe fn mem_addr(&self) -> Volatile<u32> {
-    Volatile::new(self.mem_addr as *const u32)
+  unsafe fn mem_addr(&self) -> Volatile<usize> {
+    Volatile::new(self.mem_addr as *const usize)
   }
 }
 
 impl RCC {
   fn rcc() -> Self {
-    const RCC_ADDR: u32 = 0x4002_1000;
+    const RCC_ADDR: usize = 0x4002_1000;
     RCC {
       mem_addr: RCC_ADDR,
       cr: clock_control::ClockControl::new(RCC_ADDR),
@@ -117,7 +117,7 @@ impl RCC {
     self.cfgr.set_pll_prediv_factor(factor);
   }
 
-  pub fn get_system_clock_rate(&self) -> u32 {
+  pub fn get_system_clock_rate(&self) -> usize {
     clock_control::clock_rate::get_system_clock_rate()
   }
 

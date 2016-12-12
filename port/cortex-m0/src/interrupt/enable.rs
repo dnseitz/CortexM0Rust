@@ -12,7 +12,7 @@ pub struct EnableControl {
 }
 
 impl EnableControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     EnableControl {
       iser: ISER::new(base_addr),
       icer: ICER::new(base_addr),
@@ -34,19 +34,19 @@ impl EnableControl {
 
 #[derive(Copy, Clone)]
 struct ISER {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for ISER {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     ISER { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x0
   }
 }
@@ -77,19 +77,19 @@ impl ISER {
 
 #[derive(Copy, Clone)]
 struct ICER {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for ICER {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     ICER { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x80
   }
 }
