@@ -3,6 +3,11 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
+//! Task creation, scheduling  and system calls.
+//!
+//! This module contains the functions used to create tasks and modify them within the kernel. It
+//! also contains the code for the scheduler.
+
 pub mod public;
 pub mod args;
 mod task_control;
@@ -21,6 +26,10 @@ const NUM_PRIORITIES: usize = 4;
 /// An alias for the channel to sleep on that will never be awoken
 pub const FOREVER_CHAN: usize = 0;
 
+/// The current task.
+///
+/// This keeps track of the currently running task, this should always be `Some` unless the task is
+/// actively being switched out or the scheduler has not been started.
 #[no_mangle]
 #[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
@@ -202,12 +211,14 @@ pub fn sleep_for(wchan: usize, delay: usize) {
       panic!("sleep_for - current task doesn't exist!");
     }
   }
+  drop(critical_guard);
   yield_task();
 }
 
 /// Wake up all tasks sleeping on a channel.
 ///
-/// `wake` takes 
+/// `wake` takes a `usize` argument that acts as an identifier to only wake up tasks sleeping on
+/// that same identifier. 
 pub fn wake(wchan: usize) {
   let critical_guard = CriticalSection::begin();
   let mut to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.wchan == wchan);
@@ -217,6 +228,7 @@ pub fn wake(wchan: usize) {
     task.state = State::Ready;
     PRIORITY_QUEUES[task.priority].enqueue(task);
   }
+  drop(critical_guard);
 }
 
 #[doc(hidden)]
@@ -238,6 +250,7 @@ pub fn system_tick() {
   for i in current_priority.higher() {
     if !PRIORITY_QUEUES[i].is_empty() {
       // Only context switch if there's another task at the same or higher priority level
+      drop(critical_guard);
       yield_task();
       break;
     }

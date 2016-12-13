@@ -3,26 +3,60 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
+//! Volatile memory operations.
+//!
+//! This module contains wrappers around raw pointers to perform volatile memory operations. This
+//! is mainly useful for memory mapped I/O. Writing to the peripheral memory addresses will
+//! normally be optimized out by the compiler. The `Volatile` type wraps a memory address to
+//! perform volatile operations in order to force the compiler to keep these memory accesses and
+//! stores.
+
 mod tests;
 
 use core::ops::*;
 use core::intrinsics::{volatile_load, volatile_store};
 
+/// A volatile pointer.
+///
+/// This type acts as a pointer that only uses volatile operations. Pointer arithmetic can be
+/// performed on it, and it can be dereferenced to its raw type in order to perform volatile memory
+/// operations. This is especially useful for I/O operations where writing and reading from memory
+/// mapped I/O registers would normally be optimized out by the compiler.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use altos_core::volatile::Volatile;
+/// 
+/// let mem_port: *const usize = 0x4000_2000 as *const usize; // Some memory mapped I/O port
+/// unsafe {
+///   let mut ptr = Volatile::new(mem_port);
+///   let mask = 0x0F0F;
+///   *ptr |= mask;
+/// }
+/// ```
 #[derive(Copy, Clone)]
 pub struct Volatile<T: Copy>(RawVolatile<T>);
 
+#[doc(hidden)]
 #[derive(Copy, Clone)]
 pub struct RawVolatile<T: Copy>(*const T);
 
 impl<T: Copy> Volatile<T> {
+  /// Creates a new `Volatile` pointer.
+  ///
+  /// This is unsafe because the address could be potentially anywhere, and forcing a write to a
+  /// memory address could cause undefined behavior if the wrong address is chosen.
   pub unsafe fn new(ptr: *const T) -> Self {
     Volatile(RawVolatile::new(ptr))
   }
 
+  /// Returns the inner pointer.
   pub fn as_ptr(self) -> *const T {
     (self.0).0
   }
 
+  /// Returns the inner pointer mutably.
   pub fn as_mut(self) -> *mut T {
     (self.0).0 as *mut T
   }
@@ -77,10 +111,12 @@ impl<T: Copy> RawVolatile<T> {
     RawVolatile(ptr)
   }
 
+  /// Stores a value into the address pointed at.
   pub unsafe fn store(&mut self, rhs: T) {
     volatile_store(self.0 as *mut T, rhs);
   }
 
+  /// Loads a value from the address pointed at.
   pub unsafe fn load(&self) -> T {
     volatile_load(self.0 as *const T)
   }

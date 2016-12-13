@@ -3,6 +3,12 @@
 //
 // Created by Daniel Seitz on 12/8/16
 
+// TODO: Add more description for the AltOSRust operation system
+//! AltOSRust microkernel for embedded devices.
+//!
+//! This microkernel provides task creation and scheduling for applications running on embedded
+//! devices.
+
 #![feature(core_intrinsics)]
 #![feature(asm)]
 #![feature(naked_functions)]

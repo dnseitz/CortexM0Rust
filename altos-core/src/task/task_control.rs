@@ -253,6 +253,7 @@ impl TaskHandle {
       let critical_guard = CriticalSection::begin();
       task.destroy = true;
       task.valid = INVALID_TASK;
+      drop(critical_guard);
       true
     }
     else {

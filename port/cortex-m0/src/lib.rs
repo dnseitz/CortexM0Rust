@@ -74,7 +74,7 @@ pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&Args
     stack_ptr -= 4;
     stack_ptr.store(exit_error as usize); /* LR */
     stack_ptr -= 20; /* R12, R3, R2, R1 */
-    stack_ptr.store(args.as_ptr() as usize); /* R0 */
+    stack_ptr.store(&args as *const _ as usize); /* R0 */
     stack_ptr -= 32; /* R11..R4 */
     stack_ptr.as_ptr() as usize
   }
