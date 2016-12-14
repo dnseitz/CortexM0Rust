@@ -128,6 +128,11 @@ impl<T: ?Sized> Mutex<T> {
   }
 }
 
+#[doc(hidden)]
+pub fn mutex_from_guard<'a, T>(guard: &MutexGuard<'a, T>) -> &'a Mutex<T> {
+  unsafe { &*(guard.wchan as *const Mutex<T>) }
+}
+
 impl<'mx, T: ?Sized> Deref for MutexGuard<'mx, T> {
   type Target = T;
 

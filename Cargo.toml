@@ -10,7 +10,7 @@ crate-type = ["staticlib"]
 cortex_m0 = { path = "port/cortex-m0" }
 
 [profile.dev]
-opt-level = 0
+opt-level = 1
 debug = true
 debug-assertions = true
 lto = false

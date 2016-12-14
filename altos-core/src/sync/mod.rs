@@ -9,10 +9,13 @@
 //! applications that rely on the kernel. They are used to control access to shared resources
 //! across threads in order to avoid any data races.
 
-pub mod mutex;
-pub mod spin;
+mod mutex;
+mod spin;
 mod critical;
+mod condvar;
 
-pub use self::mutex::Mutex;
-pub use self::spin::SpinMutex;
+pub use self::mutex::{Mutex, MutexGuard};
+pub use self::mutex::mutex_from_guard;
+pub use self::spin::{SpinMutex, SpinGuard};
 pub use self::critical::CriticalSection;
+pub use self::condvar::CondVar;

@@ -5,7 +5,7 @@
 //! A synchronized wrapper around the Queue struct.
 use queue::{Queue, Node};
 use alloc::boxed::Box;
-use sync::spin::{SpinMutex, MutexGuard};
+use sync::{SpinMutex, SpinGuard};
 
 /// A queue that is wrapped in a mutex lock.
 ///
@@ -76,7 +76,7 @@ impl<T> SyncQueue<T> {
     queue.is_empty()
   }
 
-  fn lock(&self) -> MutexGuard<Queue<T>> {
+  fn lock(&self) -> SpinGuard<Queue<T>> {
     self.lock.lock()
   }
 }

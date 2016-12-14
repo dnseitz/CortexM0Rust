@@ -8,27 +8,26 @@
 //! This module contains implementations for structs that help pass arguments into a task. The
 //! `Builder` struct provides an interface specifying what values the arguments to a task should
 //! have. Begin by specifying how many arguments a task should take by creating a new `Builder`
-//! with that capacity, and use the `add_arg()` method to give each argument a value. Once you have
-//! added all the arguments required, call the `finalize()` method to finish up the creation and
-//! return a usable `Args` object. For example:
+//! with that capacity, and use the `add_arg_box()` and `add_arg_num()` methods to give each 
+//! argument a value. Once you have added all the arguments required, call the `finalize()` method 
+//! to finish up the creation and return a usable `Args` object. For example:
 //!
 //! ```rust,no_run
 //! use altos_core::task::args::{Builder, Args};
 //! use altos_core::task::{Priority, new_task};
 //!
 //! let mut args = Builder::new(2);
-//! args = args.add_arg(100).add_arg(500);
+//! args = args.add_arg_num(100).add_arg_num(500);
 //!
 //! new_task(test_task, args.finalize(), 512, Priority::Normal, "args");
 //!
-//! fn test_task(args: &Args) {
-//!   let first = args[0]; // first = &100
-//!   let second = args[1]; // secont = &500
+//! fn test_task(args: &mut Args) {
+//!   let first = args.pop_num(); // first = 100
+//!   let second = args.pop_num(); // second = 400
 //!   loop {}
 //! }
 //! ```
 
-use core::ops::{Index, IndexMut};
 use collections::Vec;
 use alloc::boxed::Box;
 
@@ -41,7 +40,7 @@ type RawPtr = usize;
 pub struct Builder {
   cap: usize,
   len: usize,
-  vec: Vec<Box<RawPtr>>,
+  vec: Vec<RawPtr>,
 }
 
 impl Builder {
@@ -64,11 +63,11 @@ impl Builder {
     }
   }
 
-  /// Adds an argument to the list of arguments.
+  /// Adds an object argument to the list of arguments.
   ///
-  /// The argument should be either an integer value or a pointer casted as an integer. When using
-  /// the arguments within the task you must know the type and order of each argument and cast them
-  /// manually to the correct object.
+  /// The argument is a box containing some object. When using the arguments within the task 
+  /// you must know the type and order of each argument and cast them manually to the correct 
+  /// object.
   ///
   /// # Examples
   ///
@@ -76,20 +75,49 @@ impl Builder {
   /// use altos_core::task::args::Builder;
   ///
   /// let mut args = Builder::new(2);
-  /// args = args.add_arg(100).add_arg(500);
+  /// args = args.add_arg_box(Box::new(400u16)).add_arg_box(Box::new(100u32));
   /// ```
   ///
   /// # Panics
   ///
   /// This method will panic if you attempt to add more arguments than the capacity allocated.
-  //#[inline(never)]
-  pub fn add_arg(mut self, arg: RawPtr) -> Self {
+  #[inline(never)]
+  pub fn add_arg_box<T>(mut self, arg: Box<T>) -> Self {
     if self.len >= self.cap {
       panic!("ArgsBuilder::add_arg - added too many arguments!");
     }
     unsafe { 
       let cell = self.vec.get_unchecked_mut(self.len);
-      *cell = Box::new(arg);
+      *cell = Box::into_raw(arg) as usize;
+    }
+    self.len += 1;
+    self
+  }
+
+  /// Adds an integer value to the list of arguments.
+  ///
+  /// The argument should be a `usize` value. When using the arguments within the task you must
+  /// know the type and order of each argument and cast them manually to the correct type.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::task::args::Builder;
+  ///
+  /// let mut args = Builder::new(2);
+  /// args = args.add_arg_num(500).add_arg_num(100);
+  /// ```
+  ///
+  /// # Panics
+  ///
+  /// This method will panic if you attempt to add more arguments than the capacity allocated.
+  pub fn add_arg_num(mut self, arg: usize) -> Self {
+    if self.len >= self.cap {
+      panic!("ArgsBuilder::add_copy - added too many arguments!");
+    }
+    unsafe {
+      let cell = self.vec.get_unchecked_mut(self.len);
+      *cell = arg;
     }
     self.len += 1;
     self
@@ -107,7 +135,7 @@ impl Builder {
   /// use altos_core::task::args::Builder;
   ///
   /// let mut args = Builder::new(2);
-  /// args = args.add_arg(100).add_arg(500);
+  /// args = args.add_arg_num(100).add_arg_num(500);
   /// let finalized_args = args.finalize();
   /// ```
   pub fn finalize(mut self) -> Args {
@@ -124,7 +152,7 @@ impl Builder {
 /// we can not keep type safety across the task initialization barrier in order to keep tasks
 /// uniform.
 pub struct Args {
-  args: Vec<Box<RawPtr>>,
+  args: Vec<RawPtr>,
 }
 
 impl Args {
@@ -135,20 +163,64 @@ impl Args {
     Args { args: Vec::with_capacity(0) }
   }
 
-  fn new(args: Vec<Box<RawPtr>>) -> Self {
+  /// Returns the next argument interpreted as a boxed object.
+  ///
+  /// This method unsafely casts the raw pointer value stored in the arguments list as a boxed
+  /// value. If you cast it to the incorrect value you will be pointing at garbage or some unknown
+  /// structure.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::task::args::Builder;
+  /// use altos_core::alloc::boxed::Box;
+  ///
+  /// struct Data(usize);
+  ///
+  /// let mut args = Builder::new(1);
+  ///
+  /// args = args.add_arg_box(Box::new(Data(100)));
+  ///
+  /// let mut my_args = args.finalize();
+  ///
+  /// let my_data: Box<Data> = unsafe { my_args.pop_box::<Data>() };
+  /// ```
+  ///
+  /// # Panics
+  ///
+  /// This method will panic if there are no more arguments to retrieve.
+  pub unsafe fn pop_box<T>(&mut self) -> Box<T> {
+    let ptr = self.args.pop().unwrap();
+    Box::from_raw(ptr as *mut T)
+  }
+
+  /// Returns the next argument interpreted as a number.
+  ///
+  /// This method is safe because even if the argument is not the type you intended, you cannot
+  /// unsafely dereference any arbitrary memory addresses.
+  ///
+  /// # Examples
+  ///
+  /// ```rust,no_run
+  /// use altos_core::task::args::Builder;
+  ///
+  /// let mut args = Builder::new(1);
+  ///
+  /// args = args.add_arg_num(100);
+  ///
+  /// let mut my_args = args.finalize();
+  ///
+  /// let my_data: usize = my_args.pop_num();
+  /// ```
+  ///
+  /// # Panics
+  ///
+  /// This method will panic if there are no more arguments to retrieve.
+  pub fn pop_num(&mut self) -> usize {
+    self.args.pop().unwrap()
+  }
+
+  fn new(args: Vec<RawPtr>) -> Self {
     Args { args: args }
-  }
-}
-
-impl Index<usize> for Args {
-  type Output = usize;
-  fn index(&self, index: usize) -> &Self::Output {
-    &*self.args[index]
-  }
-}
-
-impl IndexMut<usize> for Args {
-  fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-    &mut *self.args[index]
   }
 }

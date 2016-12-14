@@ -30,10 +30,10 @@ pub struct SpinMutex<T: ?Sized> {
 
 /// A guard that controls access to a shared resource.
 ///
-/// When a lock is acquired, a `MutexGuard` will be created for the locking thread. The thread can
+/// When a lock is acquired, a `SpinGuard` will be created for the locking thread. The thread can
 /// then use that guard to access the shared data. When the guard goes out of scope the lock will
 /// automatically be freed.
-pub struct MutexGuard<'mx, T: ?Sized + 'mx> {
+pub struct SpinGuard<'mx, T: ?Sized + 'mx> {
   lock: &'mx AtomicBool,
   data: &'mx mut T,
 }
@@ -74,9 +74,9 @@ impl<T: ?Sized> SpinMutex<T> {
   /// *guard = 100;
   /// drop(guard); // Could just let guard drop out of scope too...
   /// ```
-  pub fn lock(&self) -> MutexGuard<T> {
+  pub fn lock(&self) -> SpinGuard<T> {
     self.obtain_lock();
-    MutexGuard {
+    SpinGuard {
       lock: &self.lock,
       data: unsafe { &mut *self.data.get() },
     }
@@ -102,10 +102,10 @@ impl<T: ?Sized> SpinMutex<T> {
   ///   // Move on with life
   /// }
   /// ```
-  pub fn try_lock(&self) -> Option<MutexGuard<T>> {
+  pub fn try_lock(&self) -> Option<SpinGuard<T>> {
     if self.lock.compare_and_swap(false, true, Ordering::Acquire) == false {
       Some(
-        MutexGuard {
+        SpinGuard {
           lock: &self.lock,
           data: unsafe { &mut *self.data.get() },
         }
@@ -117,7 +117,7 @@ impl<T: ?Sized> SpinMutex<T> {
   }
 }
 
-impl<'mx, T: ?Sized> Deref for MutexGuard<'mx, T> {
+impl<'mx, T: ?Sized> Deref for SpinGuard<'mx, T> {
   type Target = T;
 
   fn deref(&self) -> &T {
@@ -125,13 +125,13 @@ impl<'mx, T: ?Sized> Deref for MutexGuard<'mx, T> {
   }
 }
 
-impl<'mx, T: ?Sized> DerefMut for MutexGuard<'mx, T> {
+impl<'mx, T: ?Sized> DerefMut for SpinGuard<'mx, T> {
   fn deref_mut(&mut self) -> &mut T {
     &mut *self.data
   }
 }
 
-impl<'mx, T: ?Sized> Drop for MutexGuard<'mx, T> {
+impl<'mx, T: ?Sized> Drop for SpinGuard<'mx, T> {
   /// Dropping the guard will unlock the lock it came from
   fn drop(&mut self) {
     self.lock.store(false, Ordering::Release);

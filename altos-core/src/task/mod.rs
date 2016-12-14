@@ -20,6 +20,7 @@ use queue::{Queue, SyncQueue, Node};
 use alloc::boxed::Box;
 use core::ops::Index;
 use sync::CriticalSection;
+use sync::MutexGuard;
 
 const NUM_PRIORITIES: usize = 4;
 
@@ -121,17 +122,17 @@ pub unsafe fn switch_context() {
 /// // Start running the task
 /// start_scheduler(); 
 ///
-/// fn test_task(_args: &Args) {
+/// fn test_task(_args: &mut Args) {
 ///   // Do stuff here...
 ///   loop {}
 /// }
 /// ```
 #[inline(never)]
-pub fn new_task(code: fn(&Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
+pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
   // Make sure the task is allocated in one fell swoop
-  let critical_guard = CriticalSection::begin();
+  let g = CriticalSection::begin();
   let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
-  drop(critical_guard);
+  drop(g);
 
   let handle = TaskHandle::new(&**task);
   PRIORITY_QUEUES[task.priority].enqueue(task); 
@@ -196,7 +197,7 @@ pub fn sleep(wchan: usize) {
 /// sleep_for(FOREVER_CHAN, 300);
 /// ```
 pub fn sleep_for(wchan: usize, delay: usize) {
-  let critical_guard = CriticalSection::begin();
+  let _g = CriticalSection::begin();
   unsafe {
     if let Some(current) = CURRENT_TASK.as_mut() {
       let ticks = Timer::get_current().msec;
@@ -211,7 +212,6 @@ pub fn sleep_for(wchan: usize, delay: usize) {
       panic!("sleep_for - current task doesn't exist!");
     }
   }
-  drop(critical_guard);
   yield_task();
 }
 
@@ -220,7 +220,7 @@ pub fn sleep_for(wchan: usize, delay: usize) {
 /// `wake` takes a `usize` argument that acts as an identifier to only wake up tasks sleeping on
 /// that same identifier. 
 pub fn wake(wchan: usize) {
-  let critical_guard = CriticalSection::begin();
+  let _g = CriticalSection::begin();
   let mut to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.wchan == wchan);
   to_wake.append(OVERFLOW_DELAY_QUEUE.remove(|task| task.wchan == wchan));
   for mut task in to_wake.into_iter() {
@@ -228,7 +228,6 @@ pub fn wake(wchan: usize) {
     task.state = State::Ready;
     PRIORITY_QUEUES[task.priority].enqueue(task);
   }
-  drop(critical_guard);
 }
 
 #[doc(hidden)]
@@ -236,7 +235,7 @@ pub fn system_tick() {
   if !is_kernel_running() {
     panic!("alarm_wake - This function should only be called from kernel code!");
   }
-  let critical_guard = CriticalSection::begin();
+  let _g = CriticalSection::begin();
   Timer::tick();
   alarm_wake();
 
@@ -250,7 +249,6 @@ pub fn system_tick() {
   for i in current_priority.higher() {
     if !PRIORITY_QUEUES[i].is_empty() {
       // Only context switch if there's another task at the same or higher priority level
-      drop(critical_guard);
       yield_task();
       break;
     }
@@ -273,6 +271,26 @@ pub fn start_scheduler() {
     }
 }
 
+#[doc(hidden)]
+pub fn condvar_wait<'a, T>(wchan: usize, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
+  let g = CriticalSection::begin();
+
+  // Get a reference to the locked mutex
+  let mutex = ::sync::mutex_from_guard(&guard);
+
+  // unlock the mutex
+  drop(guard);
+
+  // Sleep on the cond var channel
+  sleep(wchan);
+  
+  // finish critical section so we can context switch
+  drop(g);
+  
+  // re-acquire lock before returning
+  mutex.lock()
+}
+
 fn is_kernel_running() -> bool {
   unsafe { ::in_kernel_mode() }
 }
@@ -284,7 +302,7 @@ fn alarm_wake() {
 
   let ticks = Timer::get_current().msec;
   
-  let to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.delay <= ticks);
+  let to_wake: Queue<TaskControl> = DELAY_QUEUE.remove(|task| task.delay <= ticks && task.wchan == FOREVER_CHAN);
   for mut task in to_wake.into_iter() {
     task.wchan = 0;
     task.state = State::Ready;
@@ -307,7 +325,7 @@ fn init_idle_task() {
   PRIORITY_QUEUES[task.priority].enqueue(Box::new(Node::new(task)));
 }
 
-fn idle_task_code(_args: &Args) {
+fn idle_task_code(_args: &mut Args) {
   loop {
     #[cfg(target_arch="arm")]
     unsafe {

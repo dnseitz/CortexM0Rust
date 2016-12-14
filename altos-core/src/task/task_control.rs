@@ -110,7 +110,7 @@ impl TaskControl {
   /// Creates a new `TaskControl` initialized and ready to be scheduled.
   ///
   /// All of the arguments to this function are the same as the `new_task` kernel function.
-  pub fn new(code: fn(&Args), args: Args, depth: usize, priority: Priority, name: &'static str) -> Self {
+  pub fn new(code: fn(&mut Args), args: Args, depth: usize, priority: Priority, name: &'static str) -> Self {
     let stack_mem: Vec<u8> = Vec::with_capacity(depth);
     // Arguments struct stored right above the stack
     let args_mem: Box<Args> = Box::new(args);
@@ -161,7 +161,7 @@ impl TaskControl {
 
   /// This initializes the task's stack. This method MUST only be called once, calling it more than
   /// once could at best waste some stack space and at worst corrupt an active stack.
-  fn initialize(&mut self, code: fn(&Args)) {
+  fn initialize(&mut self, code: fn(&mut Args)) {
     unsafe {
       let stack_ptr = Volatile::new(self.stack as *const usize);
       self.stack = ::initialize_stack(stack_ptr, code, &self.args);
@@ -241,7 +241,7 @@ impl TaskHandle {
   ///   // Task had already been destroyed
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
@@ -278,7 +278,7 @@ impl TaskHandle {
   ///   Err(()) => { /* Task was destroyed */ },
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
@@ -313,7 +313,7 @@ impl TaskHandle {
   ///   Err(()) => { /* Task was destroyed */ },
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
@@ -349,7 +349,7 @@ impl TaskHandle {
   ///   Err(()) => { /* Task was destroyed */ },
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
@@ -380,7 +380,7 @@ impl TaskHandle {
   ///   Err(()) => { /* Task was destroyed */ },
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
@@ -413,7 +413,7 @@ impl TaskHandle {
   ///   Err(()) => { /* Task was destroyed */ },
   /// }
   ///
-  /// # fn test_task(_args: &Args) {
+  /// # fn test_task(_args: &mut Args) {
   /// #   loop {}
   /// # }
   /// ```
