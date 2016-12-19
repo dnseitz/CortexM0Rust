@@ -6,7 +6,7 @@
 use alloc::boxed::Box;
 use collections::Vec;
 use volatile::Volatile;
-use super::args::Args;
+use super::Args;
 use super::NUM_PRIORITIES;
 use sync::CriticalSection;
 
@@ -230,7 +230,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -269,7 +269,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -304,7 +304,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -340,7 +340,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -371,7 +371,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   /// 
@@ -404,7 +404,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::task::{new_task, TaskHandle, Priority};
-  /// # use altos_core::task::args::Args;
+  /// # use altos_core::task::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///

@@ -7,6 +7,7 @@
 
 use atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use sync::mutex::{MutexGuard, Mutex};
+use sync::CriticalSection;
 
 /// A Condition Variable
 ///
@@ -37,8 +38,22 @@ impl CondVar {
   /// the current task. Calls to notify after the mutex is unlocked can wake up this task. When
   /// this call returns the lock will have been reacquired.
   pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
-    self.verify(::sync::mutex::mutex_from_guard(&guard));
-    ::task::condvar_wait(self as *const _ as usize, guard)
+    // Get a reference to the locked mutex
+    let mutex = ::sync::mutex_from_guard(&guard);
+
+    self.verify(mutex);
+    let g = CriticalSection::begin();
+    // unlock the mutex
+    drop(guard);
+
+    // Sleep on the cond var channel
+    ::task::sleep(self as *const _ as usize);
+    
+    // finish critical section so we can context switch
+    drop(g);
+    
+    // re-acquire lock before returning
+    mutex.lock()
   }
 
   /// Wakes up all tasks that are blocked on this condition variable.

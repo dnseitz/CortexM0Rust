@@ -13,7 +13,7 @@
 //! to finish up the creation and return a usable `Args` object. For example:
 //!
 //! ```rust,no_run
-//! use altos_core::task::args::{Builder, Args};
+//! use altos_core::task::{Builder, Args};
 //! use altos_core::task::{Priority, new_task};
 //!
 //! let mut args = Builder::new(2);
@@ -72,7 +72,7 @@ impl Builder {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// use altos_core::task::args::Builder;
+  /// use altos_core::task::Builder;
   ///
   /// let mut args = Builder::new(2);
   /// args = args.add_arg_box(Box::new(400u16)).add_arg_box(Box::new(100u32));
@@ -102,7 +102,7 @@ impl Builder {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// use altos_core::task::args::Builder;
+  /// use altos_core::task::Builder;
   ///
   /// let mut args = Builder::new(2);
   /// args = args.add_arg_num(500).add_arg_num(100);
@@ -132,7 +132,7 @@ impl Builder {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// use altos_core::task::args::Builder;
+  /// use altos_core::task::Builder;
   ///
   /// let mut args = Builder::new(2);
   /// args = args.add_arg_num(100).add_arg_num(500);
@@ -172,7 +172,7 @@ impl Args {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// use altos_core::task::args::Builder;
+  /// use altos_core::task::Builder;
   /// use altos_core::alloc::boxed::Box;
   ///
   /// struct Data(usize);
@@ -202,7 +202,7 @@ impl Args {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// use altos_core::task::args::Builder;
+  /// use altos_core::task::Builder;
   ///
   /// let mut args = Builder::new(1);
   ///

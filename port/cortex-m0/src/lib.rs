@@ -12,6 +12,7 @@
 #![no_std]
 
 extern crate altos_core;
+
 pub extern crate arm;
 
 mod exceptions;
@@ -31,7 +32,7 @@ pub use vector_table::RESET;
 pub use exceptions::EXCEPTIONS;
 use altos_core::alloc::boxed::Box;
 
-use altos_core::task::args::Args;
+use altos_core::task::Args;
 use altos_core::task;
 use altos_core::volatile;
 

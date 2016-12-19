@@ -9,18 +9,17 @@
 //! also contains the code for the scheduler.
 
 pub mod public;
-pub mod args;
+mod args;
 mod task_control;
 
 use self::task_control::{TaskControl, State};
 pub use self::task_control::{TaskHandle, Priority};
+pub use self::args::{Builder, Args};
 use timer::Timer;
-use self::args::Args;
 use queue::{Queue, SyncQueue, Node};
 use alloc::boxed::Box;
 use core::ops::Index;
 use sync::CriticalSection;
-use sync::MutexGuard;
 
 const NUM_PRIORITIES: usize = 4;
 
@@ -32,8 +31,9 @@ pub const FOREVER_CHAN: usize = 0;
 /// This keeps track of the currently running task, this should always be `Some` unless the task is
 /// actively being switched out or the scheduler has not been started.
 #[no_mangle]
+#[allow(private_no_mangle_statics)]
 #[doc(hidden)]
-pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
+static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
 
 static PRIORITY_QUEUES: [SyncQueue<TaskControl>; NUM_PRIORITIES] = [SyncQueue::new(),
                                                                     SyncQueue::new(), 
@@ -114,7 +114,7 @@ pub unsafe fn switch_context() {
 ///
 /// ```no_run
 /// use altos_core::task::{start_scheduler, new_task, Priority};
-/// use altos_core::task::args::Args;
+/// use altos_core::task::Args;
 ///
 /// // Create the task and hold onto the handle
 /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -145,7 +145,7 @@ pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: P
 ///
 /// ```no_run
 /// use altos_core::task::yield_task;
-/// use altos_core::task::args::Args;
+/// use altos_core::task::Args;
 ///
 /// fn test_task(_args: &Args) {
 ///   loop {
@@ -269,26 +269,6 @@ pub fn start_scheduler() {
       debug_assert!(CURRENT_TASK.is_some());
       ::start_first_task();
     }
-}
-
-#[doc(hidden)]
-pub fn condvar_wait<'a, T>(wchan: usize, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
-  let g = CriticalSection::begin();
-
-  // Get a reference to the locked mutex
-  let mutex = ::sync::mutex_from_guard(&guard);
-
-  // unlock the mutex
-  drop(guard);
-
-  // Sleep on the cond var channel
-  sleep(wchan);
-  
-  // finish critical section so we can context switch
-  drop(g);
-  
-  // re-acquire lock before returning
-  mutex.lock()
 }
 
 fn is_kernel_running() -> bool {
