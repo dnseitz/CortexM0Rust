@@ -10,7 +10,7 @@
 // TODO: Come back to this module and rethink this design...
 
 use volatile::Volatile;
-use task;
+use syscall;
 
 static mut TIME: Timer = Timer::new();
 
@@ -61,7 +61,7 @@ impl Timer {
       let start: usize = v_msec.load();
       let mut remaining = *v_msec - start;
       while remaining < ms {
-        task::sleep_for(task::FOREVER_CHAN, ms - remaining);
+        syscall::sleep_for(syscall::FOREVER_CHAN, ms - remaining);
         remaining = *v_msec - start;
       }
     }

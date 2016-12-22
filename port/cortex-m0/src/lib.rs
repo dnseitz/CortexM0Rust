@@ -24,20 +24,23 @@ use peripheral::gpio;
 use peripheral::rcc;
 use peripheral::systick;
 
-#[doc(hidden)]
 #[cfg(target_arch="arm")]
 pub use vector_table::RESET;
-#[doc(hidden)]
 #[cfg(target_arch="arm")]
 pub use exceptions::EXCEPTIONS;
 use altos_core::alloc::boxed::Box;
 
-use altos_core::task::Args;
-use altos_core::task;
+use altos_core::Args;
 use altos_core::volatile;
 
 pub mod kernel {
-  pub use altos_core::task::public as task;
+  pub use altos_core::syscall;
+
+  pub mod task {
+    pub use altos_core::{new_task, TaskHandle, ArgsBuilder, Args};
+    pub use altos_core::{start_scheduler};
+    pub use altos_core::{Priority};
+  }
 
   pub mod alloc {
     pub use altos_core::alloc::boxed::Box;
@@ -59,12 +62,14 @@ pub mod kernel {
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 pub fn yield_cpu() {
   let scb = system_control::scb();
   scb.set_pend_sv();
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&mut Args), args: &Box<Args>) -> usize {
   const INITIAL_XPSR: usize = 0x0100_0000;
   unsafe {
@@ -83,10 +88,10 @@ pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&mut 
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 #[inline(never)]
 pub fn start_first_task() {
   unsafe {
-    #![cfg(target_arch="arm")]
     asm!(
       concat!(
           "ldr r2, current_task_const_2\n", /* get location of current_task */
@@ -118,49 +123,41 @@ pub fn start_first_task() {
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 pub fn in_kernel_mode() -> bool {
-  if cfg!(target_arch = "arm") {
-    const MAIN_STACK: usize = 0b0;
-    const PROGRAM_STACK: usize = 0b10;
-    unsafe {
-      let stack_mask: usize;
-      asm!("mrs $0, CONTROL\n" /* get the stack control mask */
-        : "=r"(stack_mask)
-        : /* no inputs */
-        : /* no clobbers */
-        : "volatile");
-      stack_mask == MAIN_STACK
-    }
-  }
-  else {
-    true
+  const MAIN_STACK: usize = 0b0;
+  const PROGRAM_STACK: usize = 0b10;
+  unsafe {
+    let stack_mask: usize;
+    asm!("mrs $0, CONTROL\n" /* get the stack control mask */
+      : "=r"(stack_mask)
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
+    stack_mask == MAIN_STACK
   }
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 pub fn begin_critical() -> usize {
-  if cfg!(target_arch = "arm") {
-    let primask: usize;
-    unsafe {
-      asm!(
-        concat!(
-          "mrs $0, PRIMASK\n",
-          "cpsid i\n")
-        : "=r"(primask)
-        : /* no inputs */
-        : /* no clobbers */
-        : "volatile");
-    }
-    primask
-  } 
-  else {
-    0
+  let primask: usize;
+  unsafe {
+    asm!(
+      concat!(
+        "mrs $0, PRIMASK\n",
+        "cpsid i\n")
+      : "=r"(primask)
+      : /* no inputs */
+      : /* no clobbers */
+      : "volatile");
   }
+  primask
 }
 
 #[no_mangle]
+#[cfg(target_arch="arm")]
 pub fn end_critical(primask: usize) {
-  #[cfg(target_arch="arm")]
   unsafe {
     asm!("msr PRIMASK, $0"
       : /* no outputs */
@@ -178,9 +175,16 @@ fn exit_error() {
 }
 
 #[cfg(not(test))]
-#[lang = "eh_personality"] extern fn eh_personality() {}
+#[lang = "eh_personality"] extern "C" fn eh_personality() {}
 #[cfg(not(test))]
-#[lang = "panic_fmt"] extern fn panic_fmt() -> ! {loop{unsafe {arm::asm::bkpt();}}}
+#[lang = "panic_fmt"] 
+extern "C" fn panic_fmt(_fmt: core::fmt::Arguments, _file: &'static str, _line: usize) -> ! {
+  loop {
+    unsafe {
+      arm::asm::bkpt();
+    }
+  }
+}
 
 extern {
   // The application layer's entry point

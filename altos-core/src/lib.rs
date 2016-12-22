@@ -29,14 +29,18 @@ pub extern crate cm0_atomic as atomic;
 
 pub mod timer;
 pub mod volatile;
-pub mod task;
+pub mod syscall;
+mod task;
 pub mod sync;
 pub mod queue;
 pub mod init;
 
 #[cfg(target_has_atomic="ptr")]
 pub use core::sync::atomic as atomic;
-use task::Args;
+pub use task::{new_task, TaskHandle};
+pub use task::{Priority};
+pub use task::{switch_context, start_scheduler};
+pub use task::{ArgsBuilder, Args};
 use alloc::boxed::Box;
 
 // List of methods we'll likely need from port layer

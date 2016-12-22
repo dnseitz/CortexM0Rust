@@ -47,7 +47,7 @@ impl CondVar {
     drop(guard);
 
     // Sleep on the cond var channel
-    ::task::sleep(self as *const _ as usize);
+    ::syscall::sleep(self as *const _ as usize);
     
     // finish critical section so we can context switch
     drop(g);
@@ -62,7 +62,7 @@ impl CondVar {
   /// are not buffered in any way, calling `wait()` on another thread after calling `notify_all()` will
   /// still block the thread.
   pub fn notify_all(&self) {
-    ::task::wake(self as *const _ as usize);
+    ::syscall::wake(self as *const _ as usize);
   }
 
   fn verify<T>(&self, mutex: &Mutex<T>) {

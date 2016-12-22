@@ -8,10 +8,10 @@
 //! This module contains all the functions and types that should be public to any application using
 //! the task module of AltOSRust.
 
-pub use super::{yield_task, new_task, start_scheduler, system_tick};
+pub use super::{new_task, start_scheduler};
 pub use super::{TaskHandle, Priority};
 
 #[allow(missing_docs)]
 pub mod args {
-  pub use super::super::{Builder, Args};
+  pub use super::super::{ArgsBuilder, Args};
 }

@@ -4,7 +4,7 @@
 // Created by Daniel Seitz on 11/30/16
 
 use arm::asm::bkpt;
-use task;
+use altos_core::syscall;
 
 #[link_section = ".exceptions"]
 #[cfg(not(test))]
@@ -32,7 +32,7 @@ fn default_handler() {
 }
 
 fn systick_handler() {
-  task::system_tick();
+  syscall::system_tick();
 }
 
 /// Tell OS to context switch tasks, this should be set to the lowest priority so that all other
