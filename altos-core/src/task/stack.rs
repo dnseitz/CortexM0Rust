@@ -18,14 +18,14 @@ pub struct Stack {
 impl Stack {
   pub fn new(depth: usize) -> Self {
     let align = ::core::mem::align_of::<u8>();
-    let ptr = unsafe { heap::allocate(depth, align) as *const usize };
+    let ptr = unsafe { heap::allocate(depth, align) };
     if ptr.is_null() {
       alloc::oom();
     }
 
     Stack {
-      ptr: unsafe { ptr.offset(depth as isize) },
-      base: ptr,
+      ptr: unsafe { ptr.offset(depth as isize) } as *const usize,
+      base: ptr as *const usize,
       depth: depth,
     }
   }

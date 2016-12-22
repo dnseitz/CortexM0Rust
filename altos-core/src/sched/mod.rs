@@ -18,7 +18,6 @@ use task::NUM_PRIORITIES;
 /// This keeps track of the currently running task, this should always be `Some` unless the task is
 /// actively being switched out or the scheduler has not been started.
 #[no_mangle]
-#[allow(private_no_mangle_statics)]
 #[doc(hidden)]
 pub static mut CURRENT_TASK: Option<Box<Node<TaskControl>>> = None;
 

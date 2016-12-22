@@ -9,6 +9,7 @@
 #![feature(const_fn)]
 #![feature(drop_types_in_const)] // Probably can come back and remove this later
 #![allow(dead_code)]
+#![feature(linkage)]
 #![no_std]
 
 extern crate altos_core;
@@ -30,14 +31,15 @@ pub use vector_table::RESET;
 pub use exceptions::EXCEPTIONS;
 use altos_core::alloc::boxed::Box;
 
-use altos_core::Args;
+use altos_core::args::Args;
 use altos_core::volatile;
 
 pub mod kernel {
   pub use altos_core::syscall;
 
   pub mod task {
-    pub use altos_core::{new_task, TaskHandle, ArgsBuilder, Args};
+    pub use altos_core::args;
+    pub use altos_core::{new_task, TaskHandle};
     pub use altos_core::{start_scheduler};
     pub use altos_core::{Priority};
   }

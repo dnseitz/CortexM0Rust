@@ -8,12 +8,12 @@
 //! This module contains the functions used to create tasks and modify them within the kernel.
 
 pub mod public;
-mod args;
+pub mod args;
 mod stack;
 
 use self::stack::Stack;
 use syscall::sched_yield;
-pub use self::args::{ArgsBuilder, Args};
+use self::args::Args;
 use queue::Node;
 use alloc::boxed::Box;
 use sync::CriticalSection;
@@ -184,18 +184,7 @@ impl TaskControl {
     // TODO: Add some stack guard bytes to check if we've overflowed during execution?
     //  This would add some extra overhead, maybe have some #[cfg] that determines if we should add
     //  this extra security?
-    // FIXME: If the stack has overflowed, then that means that it's overflowed into our
-    //  TaskControl! So this check actually does very little when it comes to stack safety.
-    //  Possibly reordering how the TaskControl and stack are layed out in memory could help a lot
-    //  with avoiding this, or adding some guard bytes (though with our memory constraints, too
-    //  many of these could cause a lot of space overhead).
     self.stack.check_overflow()
-  }
-}
-
-impl Drop for TaskControl {
-  fn drop(&mut self) {
-    // Shouldn't need to do anything here, get's handled in the `Stack` struct
   }
 }
 
@@ -233,7 +222,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -272,7 +261,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -307,7 +296,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -343,7 +332,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -374,7 +363,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   /// 
@@ -407,7 +396,7 @@ impl TaskHandle {
   ///
   /// ```rust,no_run
   /// # use altos_core::{new_task, TaskHandle, Priority};
-  /// # use altos_core::Args;
+  /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
   ///
@@ -463,7 +452,7 @@ mod tid {
 /// Creates a new task and put it into the task queue for running. It returns a `TaskHandle` to
 /// monitor the task with
 ///
-/// `new_task` takes several arguments, a `fn(&Args)` pointer which specifies the code to run for
+/// `new_task` takes several arguments, a `fn(&mut Args)` pointer which specifies the code to run for
 /// the task, an `Args` argument for the arguments that will be passed to the task, a `usize`
 /// argument for how much space should be allocated for the task's stack, a `Priority` argument for
 /// the priority that the task should run at, and a `&str` argument to give the task a readable
@@ -473,7 +462,7 @@ mod tid {
 ///
 /// ```rust,no_run
 /// use altos_core::{start_scheduler, new_task, Priority};
-/// use altos_core::Args;
+/// use altos_core::args::Args;
 ///
 /// // Create the task and hold onto the handle
 /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");

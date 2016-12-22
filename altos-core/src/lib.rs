@@ -42,15 +42,15 @@ pub mod init;
 pub use core::sync::atomic as atomic;
 pub use task::{new_task, TaskHandle};
 pub use task::{Priority};
-pub use sched::{switch_context, start_scheduler};
-pub use task::{ArgsBuilder, Args};
+pub use sched::{CURRENT_TASK, switch_context, start_scheduler};
+pub use task::args; //{ArgsBuilder, Args};
 use alloc::boxed::Box;
 
 // List of methods we'll likely need from port layer
 #[allow(improper_ctypes)] // We're only interfacing with other Rust modules, but we can't have any explicit circular dependencies
 extern "Rust" {
   fn yield_cpu();
-  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&mut Args), args: &Box<Args>) -> usize;
+  fn initialize_stack(stack_ptr: volatile::Volatile<usize>, code: fn(&mut args::Args), args: &Box<args::Args>) -> usize;
   fn start_first_task();
   fn in_kernel_mode() -> bool;
 

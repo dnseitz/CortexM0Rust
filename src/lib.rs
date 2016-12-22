@@ -14,7 +14,7 @@ use cortex_m0::kernel::sync::{Mutex, MutexGuard};
 use cortex_m0::kernel::sync::CondVar;
 
 use cortex_m0::kernel::timer;
-use cortex_m0::kernel::task::{Args, ArgsBuilder};
+use cortex_m0::kernel::task::args::{Args, Builder};
 use cortex_m0::kernel::task;
 use cortex_m0::kernel::task::TaskHandle;
 use cortex_m0::kernel::alloc::Box;
@@ -27,7 +27,7 @@ pub static TEST_CONDVAR: CondVar = CondVar::new();
 
 #[no_mangle]
 pub fn application_entry() -> ! {
-  let mut args = ArgsBuilder::new(1);
+  let mut args = Builder::new(1);
   let guard = Box::new(TEST_MUTEX.lock());
 
   args = args.add_arg_box(guard);

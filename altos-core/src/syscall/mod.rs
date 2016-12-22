@@ -19,9 +19,9 @@ pub const FOREVER_CHAN: usize = 0;
 ///
 /// ```rust,no_run
 /// use altos_core::syscall::sched_yield;
-/// use altos_core::Args;
+/// use altos_core::args::Args;
 ///
-/// fn test_task(_args: &Args) {
+/// fn test_task(_args: &mut Args) {
 ///   loop {
 ///     // Do some important work...
 ///   
