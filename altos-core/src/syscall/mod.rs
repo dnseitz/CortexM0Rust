@@ -5,7 +5,7 @@
 
 //! Syscall interface for the AltOS kernel
 
-use task::{CURRENT_TASK, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES};
+use sched::{CURRENT_TASK, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES};
 use task::State;
 use timer::Timer;
 use sync::CriticalSection;

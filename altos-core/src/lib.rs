@@ -17,6 +17,8 @@
 #![feature(collections)]
 #![feature(drop_types_in_const)]
 #![feature(cfg_target_has_atomic)]
+#![feature(heap_api)]
+#![feature(oom)]
 #![warn(missing_docs)]
 #![no_std]
 
@@ -31,6 +33,7 @@ pub mod timer;
 pub mod volatile;
 pub mod syscall;
 mod task;
+mod sched;
 pub mod sync;
 pub mod queue;
 pub mod init;
@@ -39,7 +42,7 @@ pub mod init;
 pub use core::sync::atomic as atomic;
 pub use task::{new_task, TaskHandle};
 pub use task::{Priority};
-pub use task::{switch_context, start_scheduler};
+pub use sched::{switch_context, start_scheduler};
 pub use task::{ArgsBuilder, Args};
 use alloc::boxed::Box;
 
