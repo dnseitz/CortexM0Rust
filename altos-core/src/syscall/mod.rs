@@ -7,7 +7,7 @@
 
 use sched::{CURRENT_TASK, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES};
 use task::State;
-use timer::Timer;
+use timer::Tick;
 use sync::CriticalSection;
 
 /// An alias for the channel to sleep on that will never be awoken
@@ -74,7 +74,7 @@ pub fn sleep_for(wchan: usize, delay: usize) {
   let _g = CriticalSection::begin();
   unsafe {
     if let Some(current) = CURRENT_TASK.as_mut() {
-      let ticks = Timer::get_current().msec;
+      let ticks = Tick::get_tick();
       current.wchan = wchan;
       current.state = State::Blocked;
       current.delay = ticks + delay;
@@ -109,10 +109,10 @@ pub fn system_tick() {
   debug_assert!(unsafe { ::in_kernel_mode() });
 
   let _g = CriticalSection::begin();
-  Timer::tick();
+  Tick::tick();
 
   // wake up all tasks sleeping until the current tick
-  let ticks = Timer::get_current().msec;
+  let ticks = Tick::get_tick();
   
   let to_wake = DELAY_QUEUE.remove(|task| task.delay <= ticks && task.wchan == FOREVER_CHAN);
   for mut task in to_wake.into_iter() {

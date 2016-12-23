@@ -40,10 +40,9 @@ pub mod init;
 
 #[cfg(target_has_atomic="ptr")]
 pub use core::sync::atomic as atomic;
-pub use task::{new_task, TaskHandle};
-pub use task::{Priority};
+pub use task::{new_task, TaskHandle, Priority};
 pub use sched::{CURRENT_TASK, switch_context, start_scheduler};
-pub use task::args; //{ArgsBuilder, Args};
+pub use task::args;
 use alloc::boxed::Box;
 
 // List of methods we'll likely need from port layer

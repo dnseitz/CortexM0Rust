@@ -33,6 +33,7 @@ use altos_core::alloc::boxed::Box;
 
 use altos_core::args::Args;
 use altos_core::volatile;
+use altos_core::timer::Tick;
 
 pub mod kernel {
   pub use altos_core::syscall;
@@ -43,12 +44,14 @@ pub mod kernel {
     pub use altos_core::{start_scheduler};
     pub use altos_core::{Priority};
   }
-
+  
+  // TODO: Do we want to expose an allocation interface?
   pub mod alloc {
     pub use altos_core::alloc::boxed::Box;
   }
 
   pub mod collections {
+    // TODO: Do we want to expose an allocation interface?
     pub use altos_core::collections::Vec;
     pub use altos_core::queue::{SortedList, Queue, Node};
   }
@@ -56,10 +59,11 @@ pub mod kernel {
   pub mod sync {
     pub use altos_core::sync::{Mutex, MutexGuard};
     pub use altos_core::sync::CondVar;
+    pub use altos_core::sync::CriticalSection;
   }
 
   pub mod timer {
-    pub use altos_core::timer::Timer;
+    pub use altos_core::timer::Time;
   }
 }
 
@@ -127,7 +131,7 @@ pub fn start_first_task() {
 #[no_mangle]
 #[cfg(target_arch="arm")]
 pub fn in_kernel_mode() -> bool {
-  const MAIN_STACK: usize = 0b0;
+  const MAIN_STACK: usize = 0b00;
   const PROGRAM_STACK: usize = 0b10;
   unsafe {
     let stack_mask: usize;
@@ -207,6 +211,7 @@ pub fn init() -> ! {
   unsafe { application_entry() };
 }
 
+// TODO: Do we want to keep this linker section or just expose `init` as a special symbol?
 #[cfg(target_arch="arm")]
 mod vector_table {
   #[link_section = ".reset"]
@@ -311,6 +316,9 @@ fn init_clock() {
   while !rcc.clock_is_ready(rcc::Clock::PLL) {}
   // Switch over to the PLL for running the system
   rcc.set_system_clock_source(rcc::Clock::PLL);
+  
+  // Our system clock sets itself to interrupt every 1 ms
+  Tick::set_resolution(1);
 }
 
 fn init_ticks() {

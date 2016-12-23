@@ -59,9 +59,9 @@ fn condvar_waiter(args: &mut Args) {
   loop {
     guard = TEST_CONDVAR.wait(guard);
     pb3.set(); 
-    timer::Timer::delay_ms(*guard as usize);
+    timer::Time::delay_ms(*guard as usize);
     pb3.reset();
-    timer::Timer::delay_ms(*guard as usize);
+    timer::Time::delay_ms(*guard as usize);
   }
 }
 
@@ -76,7 +76,7 @@ fn condvar_notifier(_args: &mut Args) {
     }
     TEST_CONDVAR.notify_all();
     drop(guard);
-    timer::Timer::delay_ms(4000);
+    timer::Time::delay_ms(4000);
   }
 }
 
@@ -84,9 +84,9 @@ fn delay_task() {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
-    timer::Timer::delay_ms(100);
+    timer::Time::delay_ms(100);
     pb3.reset();
-    timer::Timer::delay_ms(100);
+    timer::Time::delay_ms(100);
   }
 }
 
@@ -99,7 +99,7 @@ fn mutex_task_1(_args: &Args) {
     let mut guard = TEST_MUTEX.lock();
     if value == 0xFFFF {
       pb3.set();
-      timer::Timer::delay_ms(2000);
+      timer::Time::delay_ms(2000);
       pb3.reset();
     }
     *guard = *guard & 0xFFFF0000;
@@ -118,9 +118,9 @@ fn mutex_task_2(_args: &Args) {
     if value == 0xFFFF0000 {
       for _ in 0..10 {
         pb3.set();
-        timer::Timer::delay_ms(100);
+        timer::Time::delay_ms(100);
         pb3.reset();
-        timer::Timer::delay_ms(100);
+        timer::Time::delay_ms(100);
       }
     }
     *guard = *guard & 0xFFFF;
@@ -134,9 +134,9 @@ fn test_task_1() {
   loop {
     for _ in 0..5 {
       pb3.set();
-      timer::Timer::delay_ms(100);
+      timer::Time::delay_ms(100);
       pb3.reset();
-      timer::Timer::delay_ms(100);
+      timer::Time::delay_ms(100);
     }
   }
 }
@@ -146,9 +146,9 @@ fn test_task_2() {
   loop {
     for _ in 0..3 {
       pb3.set();
-      timer::Timer::delay_ms(500);
+      timer::Time::delay_ms(500);
       pb3.reset();
-      timer::Timer::delay_ms(500);
+      timer::Time::delay_ms(500);
     }
   }
 }
@@ -158,9 +158,9 @@ fn test_task_3() {
   loop {
     for _ in 0..10 {
       pb3.set();
-      timer::Timer::delay_ms(50);
+      timer::Time::delay_ms(50);
       pb3.reset();
-      timer::Timer::delay_ms(50);
+      timer::Time::delay_ms(50);
     }
   }
 }
@@ -170,9 +170,9 @@ fn frequency_task_1() {
   let delay = 500;
   loop {
     pb3.set();
-    timer::Timer::delay_ms(delay);
+    timer::Time::delay_ms(delay);
     pb3.reset();
-    timer::Timer::delay_ms(delay);
+    timer::Time::delay_ms(delay);
   }
 }
 
@@ -181,9 +181,9 @@ fn frequency_task_2() {
   let mut delay = 250;
   loop {
     pb3.set();
-    timer::Timer::delay_ms(delay);
+    timer::Time::delay_ms(delay);
     pb3.reset();
-    timer::Timer::delay_ms(delay);
+    timer::Time::delay_ms(delay);
     delay += 10;
     if delay > 750 {
       delay = 250;
@@ -213,9 +213,9 @@ fn arg_task(args: &mut Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
-    timer::Timer::delay_ms(rate * multiplier);
+    timer::Time::delay_ms(rate * multiplier);
     pb3.reset();
-    timer::Timer::delay_ms(rate * multiplier);
+    timer::Time::delay_ms(rate * multiplier);
   }
 }
 
@@ -224,9 +224,9 @@ fn destroy_task(args: &mut Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
-    timer::Timer::delay_ms(1000);
+    timer::Time::delay_ms(1000);
     pb3.reset();
-    timer::Timer::delay_ms(1000);
+    timer::Time::delay_ms(1000);
     handle.destroy();
   }
 }
@@ -235,8 +235,8 @@ fn to_destroy(_args: &Args) {
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();
-    timer::Timer::delay_ms(100);
+    timer::Time::delay_ms(100);
     pb3.reset();
-    timer::Timer::delay_ms(100);
+    timer::Time::delay_ms(100);
   }
 }

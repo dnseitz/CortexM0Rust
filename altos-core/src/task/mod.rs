@@ -7,7 +7,6 @@
 //!
 //! This module contains the functions used to create tasks and modify them within the kernel.
 
-pub mod public;
 pub mod args;
 mod stack;
 
@@ -240,6 +239,12 @@ impl TaskHandle {
   pub fn destroy(&self) -> bool {
     // FIXME: If the task has allocated any dynamic memory on it own, this will be leaked when the
     //  task is destroyed.
+    //    A possible solution... allocate a heap space for each task. Pass a heap allocation
+    //    interface to the task implicitly and do all dynamic memory allocation through this
+    //    interface. When the task is destroyed we can just free the whole task-specific heap so we
+    //    wont have to worry about leaking memory. This means we would likely have to disallow core 
+    //    library `Box` allocations within the task. Or... we just don't allow dynamic allocation 
+    //    within tasks. - Daniel Seitz
     if self.is_valid() {
       let task = self.task_ref_mut();
       let critical_guard = CriticalSection::begin();
@@ -487,6 +492,7 @@ pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: P
   handle
 }
 
+#[doc(hidden)]
 pub fn init_idle_task() {
   let task = TaskControl::new(idle_task_code, Args::empty(), 256, Priority::__Idle, "idle");
 
