@@ -454,44 +454,6 @@ mod tid {
   }
 }
 
-/// Creates a new task and put it into the task queue for running. It returns a `TaskHandle` to
-/// monitor the task with
-///
-/// `new_task` takes several arguments, a `fn(&mut Args)` pointer which specifies the code to run for
-/// the task, an `Args` argument for the arguments that will be passed to the task, a `usize`
-/// argument for how much space should be allocated for the task's stack, a `Priority` argument for
-/// the priority that the task should run at, and a `&str` argument to give the task a readable
-/// name.
-///
-/// # Examples
-///
-/// ```rust,no_run
-/// use altos_core::{start_scheduler, new_task, Priority};
-/// use altos_core::args::Args;
-///
-/// // Create the task and hold onto the handle
-/// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
-///
-/// // Start running the task
-/// start_scheduler(); 
-///
-/// fn test_task(_args: &mut Args) {
-///   // Do stuff here...
-///   loop {}
-/// }
-/// ```
-#[inline(never)]
-pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
-  // Make sure the task is allocated in one fell swoop
-  let g = CriticalSection::begin();
-  let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
-  drop(g);
-
-  let handle = TaskHandle::new(&**task);
-  PRIORITY_QUEUES[task.priority].enqueue(task); 
-  handle
-}
-
 #[doc(hidden)]
 pub fn init_idle_task() {
   let task = TaskControl::new(idle_task_code, Args::empty(), 256, Priority::__Idle, "idle");

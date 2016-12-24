@@ -16,6 +16,7 @@ use cortex_m0::kernel::sync::CondVar;
 use cortex_m0::kernel::timer;
 use cortex_m0::kernel::task::args::{Args, Builder};
 use cortex_m0::kernel::task;
+use cortex_m0::kernel::syscall;
 use cortex_m0::kernel::task::TaskHandle;
 use cortex_m0::kernel::alloc::Box;
 use cortex_m0::arm;
@@ -32,22 +33,22 @@ pub fn application_entry() -> ! {
 
   args = args.add_arg_box(guard);
 
-  task::new_task(condvar_waiter, args.finalize(), 512, task::Priority::Critical, "condvar wait task");
-  task::new_task(condvar_notifier, Args::empty(), 512, task::Priority::Critical, "condvar notify task");
-  //task::new_task(test_task_1, 512, task::Priority::Critical, "first task");
-  //task::new_task(test_task_2, 512, task::Priority::Critical, "second task");
-  //task::new_task(test_task_3, 512, task::Priority::Critical, "third task");
-  //task::new_task(mutex_task_1, args.finalize(), 1024, task::Priority::Critical, "first mutex task");
-  //task::new_task(mutex_task_2, Args::empty(), 1024, task::Priority::Critical, "second mutex task");
-  //task::new_task(delay_task, 512, task::Priority::Critical, "delay task");
-  //task::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
-  //task::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
-  //task::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
-  //task::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
-  //task::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
-  //let handle = task::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
+  syscall::new_task(condvar_waiter, args.finalize(), 512, task::Priority::Critical, "condvar wait task");
+  syscall::new_task(condvar_notifier, Args::empty(), 512, task::Priority::Critical, "condvar notify task");
+  //syscall::new_task(test_task_1, 512, task::Priority::Critical, "first task");
+  //syscall::new_task(test_task_2, 512, task::Priority::Critical, "second task");
+  //syscall::new_task(test_task_3, 512, task::Priority::Critical, "third task");
+  //syscall::new_task(mutex_task_1, args.finalize(), 1024, task::Priority::Critical, "first mutex task");
+  //syscall::new_task(mutex_task_2, Args::empty(), 1024, task::Priority::Critical, "second mutex task");
+  //syscall::new_task(delay_task, 512, task::Priority::Critical, "delay task");
+  //syscall::new_task(frequency_task_1, 512, task::Priority::Critical, "frequency task 1");
+  //syscall::new_task(frequency_task_2, 512, task::Priority::Critical, "frequency task 2");
+  //syscall::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
+  //syscall::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
+  //syscall::new_task(arg_task, args2.finalize(), 512, task::Priority::Critical, "arg task");
+  //let handle = syscall::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
   //args = args.add_arg(&handle as *const _ as usize);
-  //task::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
+  //syscall::new_task(destroy_task, args.finalize(), 512, task::Priority::Critical, "destroy task");
   task::start_scheduler();
 
   loop { unsafe { arm::asm::bkpt() }; }

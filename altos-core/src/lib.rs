@@ -29,7 +29,7 @@ pub extern crate collections;
 #[cfg(not(target_has_atomic="ptr"))]
 pub extern crate cm0_atomic as atomic;
 
-pub mod timer;
+pub mod time;
 pub mod volatile;
 pub mod syscall;
 mod task;
@@ -40,7 +40,7 @@ pub mod init;
 
 #[cfg(target_has_atomic="ptr")]
 pub use core::sync::atomic as atomic;
-pub use task::{new_task, TaskHandle, Priority};
+pub use task::{TaskHandle, Priority};
 pub use sched::{CURRENT_TASK, switch_context, start_scheduler};
 pub use task::args;
 use alloc::boxed::Box;

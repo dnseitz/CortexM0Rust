@@ -29,7 +29,9 @@ unsafe impl Sync for CondVar {}
 impl CondVar {
   /// Creates a new `CondVar` which is ready to be used.
   pub const fn new() -> Self {
-    CondVar { mutex: ATOMIC_USIZE_INIT }
+    CondVar { 
+      mutex: ATOMIC_USIZE_INIT,
+    }
   }
 
   /// Blocks the current task until this condition variable recieves a notification
@@ -42,15 +44,12 @@ impl CondVar {
     let mutex = ::sync::mutex_from_guard(&guard);
 
     self.verify(mutex);
-    let g = CriticalSection::begin();
+
     // unlock the mutex
     drop(guard);
 
     // Sleep on the cond var channel
     ::syscall::sleep(self as *const _ as usize);
-    
-    // finish critical section so we can context switch
-    drop(g);
     
     // re-acquire lock before returning
     mutex.lock()

@@ -6,12 +6,54 @@
 //! Syscall interface for the AltOS kernel
 
 use sched::{CURRENT_TASK, DELAY_QUEUE, OVERFLOW_DELAY_QUEUE, PRIORITY_QUEUES};
-use task::State;
-use timer::Tick;
+use task::{State, Priority};
+use task::args::Args;
+use task::{TaskHandle, TaskControl};
+use queue::Node;
+use alloc::boxed::Box;
+use time;
 use sync::CriticalSection;
 
 /// An alias for the channel to sleep on that will never be awoken
 pub const FOREVER_CHAN: usize = 0;
+
+/// Creates a new task and put it into the task queue for running. It returns a `TaskHandle` to
+/// monitor the task with
+///
+/// `new_task` takes several arguments, a `fn(&mut Args)` pointer which specifies the code to run for
+/// the task, an `Args` argument for the arguments that will be passed to the task, a `usize`
+/// argument for how much space should be allocated for the task's stack, a `Priority` argument for
+/// the priority that the task should run at, and a `&str` argument to give the task a readable
+/// name.
+///
+/// # Examples
+///
+/// ```rust,no_run
+/// use altos_core::{start_scheduler, new_task, Priority};
+/// use altos_core::args::Args;
+///
+/// // Create the task and hold onto the handle
+/// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
+///
+/// // Start running the task
+/// start_scheduler(); 
+///
+/// fn test_task(_args: &mut Args) {
+///   // Do stuff here...
+///   loop {}
+/// }
+/// ```
+#[inline(never)]
+pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: Priority, name: &'static str) -> TaskHandle {
+  // Make sure the task is allocated in one fell swoop
+  let g = CriticalSection::begin();
+  let task = Box::new(Node::new(TaskControl::new(code, args, stack_depth, priority, name)));
+  drop(g);
+
+  let handle = TaskHandle::new(&**task);
+  PRIORITY_QUEUES[task.priority].enqueue(task); 
+  handle
+}
 
 /// Yield the current task to the scheduler so another task can run.
 ///
@@ -74,7 +116,7 @@ pub fn sleep_for(wchan: usize, delay: usize) {
   let _g = CriticalSection::begin();
   unsafe {
     if let Some(current) = CURRENT_TASK.as_mut() {
-      let ticks = Tick::get_tick();
+      let ticks = time::get_tick();
       current.wchan = wchan;
       current.state = State::Blocked;
       current.delay = ticks + delay;
@@ -109,10 +151,10 @@ pub fn system_tick() {
   debug_assert!(unsafe { ::in_kernel_mode() });
 
   let _g = CriticalSection::begin();
-  Tick::tick();
+  time::tick();
 
   // wake up all tasks sleeping until the current tick
-  let ticks = Tick::get_tick();
+  let ticks = time::get_tick();
   
   let to_wake = DELAY_QUEUE.remove(|task| task.delay <= ticks && task.wchan == FOREVER_CHAN);
   for mut task in to_wake.into_iter() {

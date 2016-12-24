@@ -33,14 +33,14 @@ use altos_core::alloc::boxed::Box;
 
 use altos_core::args::Args;
 use altos_core::volatile;
-use altos_core::timer::Tick;
+use altos_core::time;
 
 pub mod kernel {
   pub use altos_core::syscall;
 
   pub mod task {
     pub use altos_core::args;
-    pub use altos_core::{new_task, TaskHandle};
+    pub use altos_core::TaskHandle;
     pub use altos_core::{start_scheduler};
     pub use altos_core::{Priority};
   }
@@ -63,41 +63,47 @@ pub mod kernel {
   }
 
   pub mod timer {
-    pub use altos_core::timer::Time;
+    pub use altos_core::time::Time;
   }
 }
 
 #[no_mangle]
-#[cfg(target_arch="arm")]
 pub fn yield_cpu() {
-  let scb = system_control::scb();
-  scb.set_pend_sv();
-}
-
-#[no_mangle]
-#[cfg(target_arch="arm")]
-pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&mut Args), args: &Box<Args>) -> usize {
-  const INITIAL_XPSR: usize = 0x0100_0000;
-  unsafe {
-    // Offset added to account for way MCU uses stack on entry/exit of interrupts
-    stack_ptr -= 4;
-    stack_ptr.store(INITIAL_XPSR); /* xPSR */
-    stack_ptr -= 4;
-    stack_ptr.store(code as usize); /* PC */
-    stack_ptr -= 4;
-    stack_ptr.store(exit_error as usize); /* LR */
-    stack_ptr -= 20; /* R12, R3, R2, R1 */
-    stack_ptr.store(&**args as *const _ as usize); /* R0 */
-    stack_ptr -= 32; /* R11..R4 */
-    stack_ptr.as_ptr() as usize
+  #[cfg(target_arch="arm")]
+  {
+    let scb = system_control::scb();
+    scb.set_pend_sv();
   }
 }
 
 #[no_mangle]
-#[cfg(target_arch="arm")]
+pub fn initialize_stack(mut stack_ptr: volatile::Volatile<usize>, code: fn(&mut Args), args: &Box<Args>) -> usize {
+  if cfg!(target_arch = "arm") {
+    const INITIAL_XPSR: usize = 0x0100_0000;
+    unsafe {
+      // Offset added to account for way MCU uses stack on entry/exit of interrupts
+      stack_ptr -= 4;
+      stack_ptr.store(INITIAL_XPSR); /* xPSR */
+      stack_ptr -= 4;
+      stack_ptr.store(code as usize); /* PC */
+      stack_ptr -= 4;
+      stack_ptr.store(exit_error as usize); /* LR */
+      stack_ptr -= 20; /* R12, R3, R2, R1 */
+      stack_ptr.store(&**args as *const _ as usize); /* R0 */
+      stack_ptr -= 32; /* R11..R4 */
+      stack_ptr.as_ptr() as usize
+    }
+  }
+  else {
+    0
+  }
+}
+
+#[no_mangle]
 #[inline(never)]
 pub fn start_first_task() {
   unsafe {
+    #[cfg(target_arch="arm")]
     asm!(
       concat!(
           "ldr r2, current_task_const_2\n", /* get location of current_task */
@@ -129,42 +135,50 @@ pub fn start_first_task() {
 }
 
 #[no_mangle]
-#[cfg(target_arch="arm")]
 pub fn in_kernel_mode() -> bool {
   const MAIN_STACK: usize = 0b00;
   const PROGRAM_STACK: usize = 0b10;
-  unsafe {
-    let stack_mask: usize;
-    asm!("mrs $0, CONTROL\n" /* get the stack control mask */
-      : "=r"(stack_mask)
-      : /* no inputs */
-      : /* no clobbers */
-      : "volatile");
-    stack_mask == MAIN_STACK
+  if cfg!(target_arch = "arm") {
+    unsafe {
+      let stack_mask: usize;
+      asm!("mrs $0, CONTROL\n" /* get the stack control mask */
+        : "=r"(stack_mask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+      stack_mask == MAIN_STACK
+    }
+  }
+  else {
+    true
   }
 }
 
 #[no_mangle]
-#[cfg(target_arch="arm")]
 pub fn begin_critical() -> usize {
-  let primask: usize;
-  unsafe {
-    asm!(
-      concat!(
-        "mrs $0, PRIMASK\n",
-        "cpsid i\n")
-      : "=r"(primask)
-      : /* no inputs */
-      : /* no clobbers */
-      : "volatile");
+  if cfg!(target_arch = "arm") {
+    let primask: usize;
+    unsafe {
+      asm!(
+        concat!(
+          "mrs $0, PRIMASK\n",
+          "cpsid i\n")
+        : "=r"(primask)
+        : /* no inputs */
+        : /* no clobbers */
+        : "volatile");
+    }
+    primask
   }
-  primask
+  else {
+    0
+  }
 }
 
 #[no_mangle]
-#[cfg(target_arch="arm")]
 pub fn end_critical(primask: usize) {
   unsafe {
+    #[cfg(target_arch="arm")]
     asm!("msr PRIMASK, $0"
       : /* no outputs */
       : "r"(primask)
@@ -318,7 +332,7 @@ fn init_clock() {
   rcc.set_system_clock_source(rcc::Clock::PLL);
   
   // Our system clock sets itself to interrupt every 1 ms
-  Tick::set_resolution(1);
+  time::set_resolution(1);
 }
 
 fn init_ticks() {

@@ -10,24 +10,67 @@
 use syscall;
 use atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use sync::CriticalSection;
-use core::ops::{Deref, Add, AddAssign, Sub};
+use core::ops::{Add, AddAssign, Sub};
+use core::cell::UnsafeCell;
 
-static TICKS: Tick = Tick::new();
-static mut TIME: Time = Time::new();
+static SYSTEM_TIME: Tick = Tick::new();
 
 const DEFAULT_RESOLUTION: usize = 1;
 
+/// Tick the system tick counter
+///
+/// This method should only be called by the system tick interrupt handler.
+pub fn tick() {
+  SYSTEM_TIME.tick();
+}
+
+/// Return the number of ticks that have passed since the system started.
+///
+/// The ticks can overflow and wrap back to 0, so the value returned is not guaranteed to be
+/// greater than the previous values.
+pub fn get_tick() -> usize {
+  SYSTEM_TIME.get_tick()
+}
+
+/// Set the ms resolution of the ticks.
+///
+/// This should only be called once upon initialization of the system. Setting this after the
+/// system has been running for a while could cause some tasks that are delayed to wake up too
+/// early.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use altos_core::time::{self, Time};
+///
+/// // Assuming we tick 2 times every ms...
+/// time::set_resolution(2);
+/// // now every other tick we will increment the system timer by 1 ms
+///
+/// time::tick();
+/// time::tick();
+///
+/// assert_eq!(Time::now().msec, 1);
+/// ```
+pub fn set_resolution(ticks_per_ms: usize) {
+  SYSTEM_TIME.set_resolution(ticks_per_ms);
+}
+
 /// Type to keep track of how many ticks have passed since the start of the system.
-pub struct Tick {
+struct Tick {
   ticks: AtomicUsize,
   ms_res: AtomicUsize,
+  time: UnsafeCell<Time>,
 }
+
+unsafe impl Sync for Tick {}
 
 impl Tick {
   const fn new() -> Self {
     Tick {
       ticks: ATOMIC_USIZE_INIT,
       ms_res: AtomicUsize::new(DEFAULT_RESOLUTION),
+      time: UnsafeCell::new(Time::new()),
     }
   }
 
@@ -35,14 +78,14 @@ impl Tick {
   ///
   /// This method should only be called by the system tick interrupt handler.
   #[doc(hidden)]
-  pub fn tick() {
+  fn tick(&self) {
     // TODO: Come back and examine more closely to see if we need this to be an atomic operation.
     //  Since we're in the system tick handler we know we wont get preemted by anything other than
     //  higher priority interrupts.
-    let old_ticks = TICKS.fetch_add(1, Ordering::Relaxed);
-    let res = TICKS.ms_res.load(Ordering::Relaxed);
-    if res != 0 && old_ticks % res == 0 {
-      Time::increment();
+    let old_ticks = self.ticks.fetch_add(1, Ordering::Relaxed);
+    let res = self.ms_res.load(Ordering::Relaxed);
+    if res != 0 && (old_ticks + 1) % res == 0 {
+      unsafe { (&mut *self.time.get()).increment() };
     }
   }
 
@@ -50,8 +93,8 @@ impl Tick {
   ///
   /// The ticks can overflow and wrap back to 0, so the value returned is not guaranteed to be
   /// greater than the previous values.
-  pub fn get_tick() -> usize {
-    TICKS.load(Ordering::Relaxed)
+  fn get_tick(&self) -> usize {
+    self.ticks.load(Ordering::Relaxed)
   }
 
   /// Set the ms resolution of the ticks.
@@ -59,39 +102,20 @@ impl Tick {
   /// This should only be called once upon initialization of the system. Setting this after the
   /// system has been running for a while could cause some tasks that are delayed to wake up too
   /// early.
-  ///
-  /// # Example
-  ///
-  /// ```rust,no_run
-  /// use altos_core::timer::Tick;
-  ///
-  /// // Assuming we tick 2 times every ms...
-  /// Tick::set_resolution(2);
-  /// // now every other tick we will increment the system timer by 1 ms
-  ///
-  /// Tick::tick();
-  /// Tick::tick();
-  ///
-  /// assert_eq!(Time::now().ms, 1);
-  /// ```
   // TODO: Potentially we could update any delayed tasks with the new resolution, but this seems
   //  like it would only be useful in very *very* specific cases and could cause a lot of added
   //  complexity to the code.
-  pub fn set_resolution(ticks_per_ms: usize) {
+  fn set_resolution(&self, ticks_per_ms: usize) {
     debug_assert!(ticks_per_ms > 0);
-    TICKS.ms_res.store(ticks_per_ms, Ordering::SeqCst);
+    self.ms_res.store(ticks_per_ms, Ordering::SeqCst);
   }
 
-  fn get_resolution() -> usize {
-    TICKS.ms_res.load(Ordering::Relaxed)
+  fn get_resolution(&self) -> usize {
+    self.ms_res.load(Ordering::Relaxed)
   }
-}
 
-impl Deref for Tick {
-  type Target = AtomicUsize;
-
-  fn deref(&self) -> &Self::Target {
-    &self.ticks
+  fn time(&self) -> Time {
+    unsafe { *self.time.get() }
   }
 }
 
@@ -117,7 +141,7 @@ impl Time {
   /// Get the current system time.
   pub fn now() -> Time {
     let _g = CriticalSection::begin();
-    unsafe { TIME }
+    SYSTEM_TIME.time()
   }
 
   /// Delay a task for a certain number of milliseconds.
@@ -125,7 +149,7 @@ impl Time {
   /// This method takes a `usize` argument for the number of milliseconds to delay the currently
   /// running task.
   pub fn delay_ms(ms: usize) {
-    syscall::sleep_for(syscall::FOREVER_CHAN, ms * Tick::get_resolution());
+    syscall::sleep_for(syscall::FOREVER_CHAN, ms * SYSTEM_TIME.get_resolution());
   }
 
   /// Delay a task for a certain number of seconds.
@@ -137,13 +161,13 @@ impl Time {
   }
 
   /// Increment the system time by 1 ms, incrementing the seconds as well if our ms rolls over.
-  fn increment() {
+  fn increment(&mut self) {
     let increment = Time {
       sec: 0,
       msec: 1,
     };
     let _g = CriticalSection::begin();
-    unsafe { TIME += increment };
+    *self += increment;
   }
 }
 
@@ -183,5 +207,95 @@ impl Sub<Time> for Time {
       self.msec = 1000 - (rhs.msec - self.msec)
     }
     self
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{Tick, Time};
+
+  #[test]
+  fn smoke() {
+    let tick = Tick::new();
+
+    tick.tick();
+
+    assert_eq!(tick.get_tick(), 1);
+  }
+
+  #[test]
+  fn smoke2() {
+    let tick = Tick::new();
+
+    tick.tick();
+    tick.tick();
+
+    assert_eq!(tick.get_tick(), 2);
+  }
+
+  #[test]
+  fn two_msec_resolution_ticks() {
+    let tick = Tick::new();
+
+    tick.set_resolution(2);
+
+    tick.tick();
+
+    assert_eq!(tick.time().msec, 0);
+
+    tick.tick();
+
+    assert_eq!(tick.time().msec, 1);
+
+  }
+
+  #[test]
+  fn sec_ticks() {
+    let tick = Tick::new();
+
+    tick.set_resolution(1);
+
+    for _ in 0..1000 {
+      tick.tick();
+    }
+
+    assert_eq!(tick.time().sec, 1);
+    assert_eq!(tick.time().msec, 0);
+  }
+
+  #[test]
+  fn sec_ticks_2() {
+    let tick = Tick::new();
+
+    tick.set_resolution(1);
+
+    for _ in 0..1500 {
+      tick.tick();
+    }
+
+    assert_eq!(tick.time().sec, 1);
+    assert_eq!(tick.time().msec, 500);
+  }
+
+  #[test]
+  fn add_times() {
+    let time1 = Time { sec: 100, msec: 10 };
+    let time2 = Time { sec: 200, msec: 20 };
+
+    let time3 = time1 + time2;
+
+    assert_eq!(time3.sec, 300);
+    assert_eq!(time3.msec, 30);
+  }
+
+  #[test]
+  fn add_times_overflowing() {
+    let time1 = Time { sec: 100, msec: 900 };
+    let time2 = Time { sec: 100, msec: 200 };
+
+    let time3 = time1 + time2;
+
+    assert_eq!(time3.sec, 201);
+    assert_eq!(time3.msec, 100);
   }
 }
