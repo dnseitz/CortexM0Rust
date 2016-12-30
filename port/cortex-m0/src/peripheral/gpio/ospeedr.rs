@@ -13,7 +13,7 @@ pub enum Speed {
 }
 
 impl Field for Speed {
-  fn mask(&self) -> u32 {
+  fn mask(&self) -> usize {
     match *self {
       Speed::Low => 0b00,
       Speed::Medium => 0b01,
@@ -23,7 +23,7 @@ impl Field for Speed {
 }
 
 impl Speed {
-  fn from_mask(mask: u32) -> Self {
+  fn from_mask(mask: usize) -> Self {
     match mask {
       0b00 | 0b10 => Speed::Low,
       0b01 => Speed::Medium,
@@ -35,19 +35,19 @@ impl Speed {
 
 #[derive(Copy, Clone)]
 pub struct OSPEEDR {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for OSPEEDR {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     OSPEEDR { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x08
   }
 }

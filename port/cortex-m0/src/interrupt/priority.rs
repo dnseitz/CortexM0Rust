@@ -14,7 +14,7 @@ pub enum Priority {
 }
 
 impl Field for Priority {
-  fn mask(&self) -> u32 {
+  fn mask(&self) -> usize {
     match *self {
       Priority::Highest => 0b00 << 6,
       Priority::High => 0b01 << 6,
@@ -25,7 +25,7 @@ impl Field for Priority {
 }
 
 impl Priority {
-  fn from_mask(mask: u32) -> Self {
+  fn from_mask(mask: usize) -> Self {
     match mask >> 6 {
       0b00 => Priority::Highest,
       0b01 => Priority::High,
@@ -42,7 +42,7 @@ pub struct PriorityControl {
 }
 
 impl PriorityControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     PriorityControl {
       ipr_registers: [
         IPR::new(base_addr, 0x00),
@@ -77,26 +77,26 @@ impl PriorityControl {
 
 #[derive(Copy, Clone)]
 struct IPR {
-  base_addr: u32,
-  mem_offset: u32,
+  base_addr: usize,
+  mem_offset: usize,
 }
 
 impl Register for IPR {
-  fn new(_base_addr: u32) -> Self {
+  fn new(_base_addr: usize) -> Self {
     unimplemented!();
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     self.mem_offset
   }
 }
 
 impl IPR {
-  fn new(base_addr: u32, offset: u32) -> Self {
+  fn new(base_addr: usize, offset: usize) -> Self {
     IPR {
       base_addr: base_addr,
       mem_offset: offset,

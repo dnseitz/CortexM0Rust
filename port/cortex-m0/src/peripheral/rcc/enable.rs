@@ -59,7 +59,7 @@ pub enum Peripheral {
 }
 
 impl Field for Peripheral {
-  fn mask(&self) -> u32 {
+  fn mask(&self) -> usize {
     match *self {
       // AHB Peripherals
       Peripheral::TouchSenseController => 0b1 << 24,
@@ -119,7 +119,7 @@ pub struct PeripheralControl {
 }
 
 impl PeripheralControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     PeripheralControl {
       ahbenr: AHBENR::new(base_addr),
       apbenr1: APBENR1::new(base_addr),
@@ -170,19 +170,19 @@ impl PeripheralControl {
 
 #[derive(Copy, Clone)]
 struct AHBENR {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for AHBENR {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     AHBENR { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x14
   }
 }
@@ -231,19 +231,19 @@ impl AHBENR {
 
 #[derive(Copy, Clone)]
 struct APBENR1 {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for APBENR1 {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     APBENR1 { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x1C
   }
 }
@@ -294,19 +294,19 @@ impl APBENR1 {
 
 #[derive(Copy, Clone)]
 struct APBENR2 {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for APBENR2 {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     APBENR2 { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x18
   }
 }

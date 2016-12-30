@@ -7,25 +7,25 @@ use super::super::Register;
 
 #[derive(Copy, Clone)]
 pub struct CVR {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for CVR {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     CVR { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x8
   }
 }
 
 impl CVR {
-  pub fn get_current_value(&self) -> u32 {
+  pub fn get_current_value(&self) -> usize {
     let mask = 0xFFFFFF;
 
     unsafe {

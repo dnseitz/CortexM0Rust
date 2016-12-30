@@ -15,19 +15,19 @@ pub fn scb() -> SCB {
 /// System Control Block
 #[derive(Copy, Clone)]
 pub struct SCB {
-  mem_addr: u32,
+  mem_addr: usize,
   icsr: icsr::ICSR,
 }
 
 impl Control for SCB {
-  unsafe fn mem_addr(&self) -> Volatile<u32> {
-    Volatile::new(self.mem_addr as *const u32)
+  unsafe fn mem_addr(&self) -> Volatile<usize> {
+    Volatile::new(self.mem_addr as *const usize)
   }
 }
 
 impl SCB {
   fn scb() -> Self {
-    const SCB_ADDR: u32 = 0xE000_ED00;
+    const SCB_ADDR: usize = 0xE000_ED00;
     SCB {
       mem_addr: SCB_ADDR,
       icsr: icsr::ICSR::new(SCB_ADDR),

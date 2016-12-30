@@ -16,21 +16,21 @@ pub fn systick() -> SysTick {
 
 #[derive(Copy, Clone)]
 pub struct SysTick {
-  mem_addr: u32,
+  mem_addr: usize,
   csr: control_status::CSR,
   rvr: reload_value::RVR,
   cvr: current_value::CVR,
 }
 
 impl Control for SysTick {
-  unsafe fn mem_addr(&self) -> Volatile<u32> {
-    Volatile::new(self.mem_addr as *const u32)
+  unsafe fn mem_addr(&self) -> Volatile<usize> {
+    Volatile::new(self.mem_addr as *const usize)
   }
 }
 
 impl SysTick {
   fn systick() -> Self {
-    const SYSTICK_ADDR: u32 = 0xE000E010;
+    const SYSTICK_ADDR: usize = 0xE000E010;
     SysTick {
       mem_addr: SYSTICK_ADDR,
       csr: control_status::CSR::new(SYSTICK_ADDR),
@@ -63,15 +63,15 @@ impl SysTick {
     self.csr.set_source(control_status::ClockSource::Reference);
   }
 
-  pub fn get_reload_value(&self) -> u32 {
+  pub fn get_reload_value(&self) -> usize {
     self.rvr.get_reload_value()
   }
 
-  pub fn set_reload_value(&self, value: u32) {
+  pub fn set_reload_value(&self, value: usize) {
     self.rvr.set_reload_value(value);
   }
 
-  pub fn get_current_value(&self) -> u32 {
+  pub fn get_current_value(&self) -> usize {
     self.cvr.get_current_value()
   }
 

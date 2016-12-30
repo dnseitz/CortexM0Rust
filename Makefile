@@ -17,6 +17,7 @@ release_build = $(release_build_path)$(binary)
 ### CARGO ###
 cargo = xargo
 cargo_args = --target $(target)
+cargo_args_debug = --verbose --target $(target)
 
 ### TEST ###
 test_dependencies = altos_core \
@@ -59,6 +60,13 @@ release: $(linker_script)
 	@$(cargo) build $(cargo_args) --release
 	@$(linker) $(linker_args) -o $(release_build) $(release_static_lib)
 	@$(size) $(size_flags) $(release_build)
+
+release_debug: $(linker_script)
+	@mkdir -p $(release_build_path)
+	@$(cargo) build $(cargo_args_debug) --release
+	@$(linker) $(linker_args) -o $(release_build) $(release_static_lib)
+	@$(size) $(size_flags) $(release_build)
+
 
 gdb: debug
 	@$(gdb) $(gdb_flags) $(debug_build)

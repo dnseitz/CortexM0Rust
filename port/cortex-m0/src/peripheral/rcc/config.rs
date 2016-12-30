@@ -15,7 +15,7 @@ pub struct ConfigControl {
 }
 
 impl ConfigControl {
-  pub fn new(base_addr: u32) -> Self {
+  pub fn new(base_addr: usize) -> Self {
     ConfigControl {
       cfgr: CFGR::new(base_addr),
       cfgr2: CFGR2::new(base_addr),
@@ -70,19 +70,19 @@ impl ConfigControl {
 /// Clock Configuration Register
 #[derive(Copy, Clone)]
 struct CFGR {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for CFGR {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     CFGR { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x04
   }
 }
@@ -171,7 +171,7 @@ impl CFGR {
     if mul < 2 || mul > 16 {
       panic!("CFGR::set_pll_multiplier - the multiplier must be between 2..16!");
     }
-    let mask = ((mul - 2) as u32) << 18;
+    let mask = ((mul - 2) as usize) << 18;
 
     unsafe {
       let mut reg = self.addr();
@@ -185,19 +185,19 @@ impl CFGR {
 
 #[derive(Copy, Clone)]
 struct CFGR2 {
-  base_addr: u32,
+  base_addr: usize,
 }
 
 impl Register for CFGR2 {
-  fn new(base_addr: u32) -> Self {
+  fn new(base_addr: usize) -> Self {
     CFGR2 { base_addr: base_addr }
   }
 
-  fn base_addr(&self) -> u32 {
+  fn base_addr(&self) -> usize {
     self.base_addr
   }
 
-  fn mem_offset(&self) -> u32 {
+  fn mem_offset(&self) -> usize {
     0x2C
   }
 }
@@ -217,7 +217,7 @@ impl CFGR2 {
     if factor < 1 || factor > 16 {
       panic!("CFGR2::set_pll_prediv_factor - the division factor must be between 1..16!");
     }
-    let mask = (factor - 1) as u32;
+    let mask = (factor - 1) as usize;
 
     unsafe {
       let mut reg = self.addr();

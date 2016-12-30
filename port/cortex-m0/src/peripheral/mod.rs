@@ -9,23 +9,24 @@
 pub mod rcc;
 pub mod gpio;
 pub mod systick;
+pub mod usart;
 
 use volatile::Volatile;
 
 pub trait Control {
-  unsafe fn mem_addr(&self) -> Volatile<u32>;
+  unsafe fn mem_addr(&self) -> Volatile<usize>;
 }
 
 pub trait Register {
-  fn new(base_addr: u32) -> Self;
+  fn new(base_addr: usize) -> Self;
 
-  fn base_addr(&self) -> u32;
-  fn mem_offset(&self) -> u32;
-  unsafe fn addr(&self) -> Volatile<u32> {
-    Volatile::new((self.base_addr() + self.mem_offset()) as *const u32)
+  fn base_addr(&self) -> usize;
+  fn mem_offset(&self) -> usize;
+  unsafe fn addr(&self) -> Volatile<usize> {
+    Volatile::new((self.base_addr() + self.mem_offset()) as *const usize)
   }
 }
 
 pub trait Field {
-  fn mask(&self) -> u32;
+  fn mask(&self) -> usize;
 }
