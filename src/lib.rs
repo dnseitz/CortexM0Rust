@@ -32,8 +32,12 @@ pub fn application_entry() -> ! {
   //            rate       frequency
   args = args.add_num(50).add_num(5);
 
-  //syscall::new_task(condvar_waiter, args.finalize(), 512, task::Priority::Critical, "condvar wait task");
-  //syscall::new_task(condvar_notifier, Args::empty(), 512, task::Priority::Critical, "condvar notify task");
+  let guard = TEST_MUTEX.lock();
+  let mut condvar_args = ArgsBuilder::new(1);
+  condvar_args = condvar_args.add_box(Box::new(guard));
+
+  syscall::new_task(condvar_waiter, condvar_args.finalize(), 512, task::Priority::Critical, "condvar wait task");
+  syscall::new_task(condvar_notifier, Args::empty(), 512, task::Priority::Critical, "condvar notify task");
   //syscall::new_task(test_task_1, Args::empty(), 512, task::Priority::Critical, "first task");
   //syscall::new_task(test_task_2, Args::empty(), 512, task::Priority::Critical, "second task");
   //syscall::new_task(test_task_3, Args::empty(), 512, task::Priority::Critical, "third task");
@@ -45,10 +49,10 @@ pub fn application_entry() -> ! {
   //syscall::new_task(preempt_task_1, 512, task::Priority::Critical, "preempt task 1");
   //syscall::new_task(preempt_task_2, 512, task::Priority::Critical, "preempt task 2");
   //syscall::new_task(arg_task, args.finalize(), 512, task::Priority::Critical, "arg task");
-  let handle = syscall::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
-  let mut destroy_args = ArgsBuilder::new(1);
-  destroy_args = destroy_args.add_box(Box::new(handle));
-  syscall::new_task(destroy_task, destroy_args.finalize(), 512, task::Priority::Critical, "destroy task");
+  //let handle = syscall::new_task(to_destroy, Args::empty(), 512, task::Priority::Critical, "to destroy");
+  //let mut destroy_args = ArgsBuilder::new(1);
+  //destroy_args = destroy_args.add_box(Box::new(handle));
+  //syscall::new_task(destroy_task, destroy_args.finalize(), 512, task::Priority::Critical, "destroy task");
   task::start_scheduler();
 
   loop { unsafe { arm::asm::bkpt() }; }

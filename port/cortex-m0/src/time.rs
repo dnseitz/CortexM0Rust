@@ -21,6 +21,7 @@ pub fn now() -> Time {
 ///
 /// This method takes a `usize` argument for the number of milliseconds to delay the currently
 /// running task.
+#[inline(never)]
 pub fn delay_ms(ms: usize) {
   let ms_res = get_resolution();
   if ms_res == 0 {

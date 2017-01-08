@@ -469,10 +469,12 @@ pub fn init_idle_task() {
 
 fn idle_task_code(_args: &mut Args) {
   loop {
+    /*
     #[cfg(target_arch="arm")]
     unsafe {
       asm!("wfi");
     }
+    */
     sched_yield();
   }
 }

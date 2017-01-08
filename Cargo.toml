@@ -34,4 +34,4 @@ debug-assertions = true
 codegen-units = 1
 panic = "unwind"
 
-[workspace]
+#[workspace]
