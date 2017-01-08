@@ -8,7 +8,7 @@
 //! This module contains implementations for structs that help pass arguments into a task. The
 //! `ArgsBuilder` struct provides an interface specifying what values the arguments to a task should
 //! have. Begin by specifying how many arguments a task should take by creating a new `ArgsBuilder`
-//! with that capacity, and use the `add_arg_box()` and `add_arg_num()` methods to give each 
+//! with that capacity, and use the `add_box()` and `add_num()` methods to give each 
 //! argument a value. Once you have added all the arguments required, call the `finalize()` method 
 //! to finish up the creation and return a usable `Args` object. For example:
 //!
@@ -18,7 +18,7 @@
 //! use altos_core::syscall::new_task;
 //!
 //! let mut args = ArgsBuilder::new(2);
-//! args = args.add_arg_num(100).add_arg_num(500);
+//! args = args.add_num(100).add_num(500);
 //!
 //! new_task(test_task, args.finalize(), 512, Priority::Normal, "args");
 //!
@@ -136,7 +136,7 @@ impl ArgsBuilder {
   /// use altos_core::args::ArgsBuilder;
   ///
   /// let mut args = ArgsBuilder::new(2);
-  /// args = args.add_arg_num(100).add_arg_num(500);
+  /// args = args.add_num(100).add_num(500);
   /// let finalized_args = args.finalize();
   /// ```
   pub fn finalize(mut self) -> Args {
@@ -180,7 +180,7 @@ impl Args {
   ///
   /// let mut args = ArgsBuilder::new(1);
   ///
-  /// args = args.add_arg_box(Box::new(Data(100)));
+  /// args = args.add_box(Box::new(Data(100)));
   ///
   /// let mut my_args = args.finalize();
   ///
@@ -207,7 +207,7 @@ impl Args {
   ///
   /// let mut args = ArgsBuilder::new(1);
   ///
-  /// args = args.add_arg_num(100);
+  /// args = args.add_num(100);
   ///
   /// let mut my_args = args.finalize();
   ///
