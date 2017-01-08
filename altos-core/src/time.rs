@@ -3,6 +3,12 @@
 //
 // Created by Daniel Seitz on 11/30/16
 
+// FIXME: I think the real-time calculation should be moved out of the kernel and into the
+// portability layer, the kernel shouldn't have any concept of how much real time is passing, only
+// how many CPU ticks have gone by. There could be a lot of factors that are platform specific that
+// determine how to calculate real time from the ticks so it seems best to keep them in the
+// portability layer.
+
 //! System time handling.
 //!
 //! This module helps keep track of the system time and how much time has passed.

@@ -14,7 +14,8 @@
 //!
 //! ```rust,no_run
 //! use altos_core::args::{Builder, Args};
-//! use altos_core::{Priority, new_task};
+//! use altos_core::Priority;
+//! use altos_core::syscall::new_task;
 //!
 //! let mut args = Builder::new(2);
 //! args = args.add_arg_num(100).add_arg_num(500);

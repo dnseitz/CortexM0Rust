@@ -7,7 +7,6 @@
 
 use atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use sync::mutex::{MutexGuard, Mutex};
-use sync::CriticalSection;
 
 /// A Condition Variable
 ///

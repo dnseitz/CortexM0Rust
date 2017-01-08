@@ -7,6 +7,7 @@ use volatile::Volatile;
 use super::args::Args;
 use alloc::{self, heap};
 use alloc::boxed::Box;
+use arch;
 
 #[repr(C)]
 pub struct Stack {
@@ -33,7 +34,7 @@ impl Stack {
   pub fn initialize(&mut self, code: fn(&mut Args), args: &Box<Args>) {
     unsafe {
       let stack_ptr = self.ptr();
-      self.ptr = ::initialize_stack(stack_ptr, code, args) as *const usize;
+      self.ptr = arch::initialize_stack(stack_ptr, code, args) as *const usize;
     }
   }
 

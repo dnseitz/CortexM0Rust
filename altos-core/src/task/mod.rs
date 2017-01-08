@@ -220,7 +220,8 @@ impl TaskHandle {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -265,7 +266,8 @@ impl TaskHandle {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -300,7 +302,8 @@ impl TaskHandle {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -336,7 +339,8 @@ impl TaskHandle {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -367,7 +371,8 @@ impl TaskHandle {
   /// Returns the task's name.
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
@@ -400,7 +405,8 @@ impl TaskHandle {
   /// # Examples
   ///
   /// ```rust,no_run
-  /// # use altos_core::{new_task, TaskHandle, Priority};
+  /// # use altos_core::{TaskHandle, Priority};
+  /// # use altos_core::syscall::new_task;
   /// # use altos_core::args::Args;
   ///
   /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");

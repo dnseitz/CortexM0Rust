@@ -13,6 +13,7 @@ use queue::Node;
 use alloc::boxed::Box;
 use time;
 use sync::CriticalSection;
+use arch;
 
 /// An alias for the channel to sleep on that will never be awoken
 pub const FOREVER_CHAN: usize = 0;
@@ -29,7 +30,8 @@ pub const FOREVER_CHAN: usize = 0;
 /// # Examples
 ///
 /// ```rust,no_run
-/// use altos_core::{start_scheduler, new_task, Priority};
+/// use altos_core::{start_scheduler, Priority};
+/// use altos_core::syscall::new_task;
 /// use altos_core::args::Args;
 ///
 /// // Create the task and hold onto the handle
@@ -74,7 +76,7 @@ pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: P
 /// }
 /// ```
 pub fn sched_yield() {
-  unsafe { ::yield_cpu() };
+  arch::yield_cpu();
 }
 
 /// Put the current task to sleep, waiting on a channel to be woken up.
@@ -148,7 +150,7 @@ pub fn wake(wchan: usize) {
 
 #[doc(hidden)]
 pub fn system_tick() {
-  debug_assert!(unsafe { ::in_kernel_mode() });
+  debug_assert!(arch::in_kernel_mode());
 
   let _g = CriticalSection::begin();
   time::tick();

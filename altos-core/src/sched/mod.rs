@@ -12,6 +12,7 @@ use queue::{SyncQueue, Node};
 use alloc::boxed::Box;
 use core::ops::Index;
 use task::NUM_PRIORITIES;
+use arch;
 
 /// The current task.
 ///
@@ -101,6 +102,6 @@ pub fn start_scheduler() {
         }
       }
       debug_assert!(CURRENT_TASK.is_some());
-      ::start_first_task();
+      arch::start_first_task();
     }
 }
