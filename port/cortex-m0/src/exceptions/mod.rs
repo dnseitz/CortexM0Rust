@@ -5,6 +5,7 @@
 
 use arm::asm::bkpt;
 use altos_core::syscall;
+use time;
 
 #[link_section = ".exceptions"]
 #[cfg(not(test))]
@@ -33,6 +34,7 @@ fn default_handler() {
 
 fn systick_handler() {
   syscall::system_tick();
+  time::system_tick();
 }
 
 /// Tell OS to context switch tasks, this should be set to the lowest priority so that all other

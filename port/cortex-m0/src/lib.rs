@@ -18,6 +18,7 @@ pub extern crate arm;
 
 mod exceptions;
 pub mod peripheral;
+pub mod time;
 mod interrupt;
 mod system_control;
 
@@ -31,7 +32,6 @@ pub use vector_table::RESET;
 pub use exceptions::EXCEPTIONS;
 
 use altos_core::volatile;
-use altos_core::time;
 
 pub mod kernel {
   pub use altos_core::syscall;
@@ -58,10 +58,6 @@ pub mod kernel {
     pub use altos_core::sync::{Mutex, MutexGuard};
     pub use altos_core::sync::CondVar;
     pub use altos_core::sync::CriticalSection;
-  }
-
-  pub mod timer {
-    pub use altos_core::time::Time;
   }
 }
 
