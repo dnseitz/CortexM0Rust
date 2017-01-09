@@ -29,12 +29,12 @@ pub static TEST_CONDVAR: CondVar = CondVar::new();
 #[no_mangle]
 pub fn application_entry() -> ! {
   let mut args = ArgsBuilder::new(2);
-  //            rate       frequency
-  args = args.add_num(50).add_num(5);
+  //     rate      frequency
+  args.add_num(50).add_num(5);
 
   let guard = TEST_MUTEX.lock();
   let mut condvar_args = ArgsBuilder::new(1);
-  condvar_args = condvar_args.add_box(Box::new(guard));
+  condvar_args.add_box(Box::new(guard));
 
   syscall::new_task(condvar_waiter, condvar_args.finalize(), 512, task::Priority::Critical, "condvar wait task");
   syscall::new_task(condvar_notifier, Args::empty(), 512, task::Priority::Critical, "condvar notify task");

@@ -18,7 +18,8 @@
 //! use altos_core::syscall::new_task;
 //!
 //! let mut args = ArgsBuilder::new(2);
-//! args = args.add_num(100).add_num(500);
+//! args.add_num(100)
+//!     .add_num(500);
 //!
 //! new_task(test_task, args.finalize(), 512, Priority::Normal, "args");
 //!
@@ -76,14 +77,14 @@ impl ArgsBuilder {
   /// use altos_core::args::ArgsBuilder;
   ///
   /// let mut args = ArgsBuilder::new(2);
-  /// args = args.add_box(Box::new(400u16)).add_box(Box::new(100u32));
+  /// args.add_box(Box::new(400u16)).add_box(Box::new(100u32));
   /// ```
   ///
   /// # Panics
   ///
   /// This method will panic if you attempt to add more arguments than the capacity allocated.
   #[inline(never)]
-  pub fn add_box<T>(mut self, arg: Box<T>) -> Self {
+  pub fn add_box<T>(&mut self, arg: Box<T>) -> &mut Self {
     if self.len >= self.cap {
       panic!("ArgsBuilder::add_arg - added too many arguments!");
     }
@@ -106,13 +107,13 @@ impl ArgsBuilder {
   /// use altos_core::args::ArgsBuilder;
   ///
   /// let mut args = ArgsBuilder::new(2);
-  /// args = args.add_num(500).add_num(100);
+  /// args.add_num(500).add_num(100);
   /// ```
   ///
   /// # Panics
   ///
   /// This method will panic if you attempt to add more arguments than the capacity allocated.
-  pub fn add_num(mut self, arg: usize) -> Self {
+  pub fn add_num(&mut self, arg: usize) -> &mut Self {
     if self.len >= self.cap {
       panic!("ArgsBuilder::add_copy - added too many arguments!");
     }
@@ -136,7 +137,7 @@ impl ArgsBuilder {
   /// use altos_core::args::ArgsBuilder;
   ///
   /// let mut args = ArgsBuilder::new(2);
-  /// args = args.add_num(100).add_num(500);
+  /// args.add_num(100).add_num(500);
   /// let finalized_args = args.finalize();
   /// ```
   pub fn finalize(mut self) -> Args {
@@ -180,7 +181,7 @@ impl Args {
   ///
   /// let mut args = ArgsBuilder::new(1);
   ///
-  /// args = args.add_box(Box::new(Data(100)));
+  /// args.add_box(Box::new(Data(100)));
   ///
   /// let mut my_args = args.finalize();
   ///
@@ -207,7 +208,7 @@ impl Args {
   ///
   /// let mut args = ArgsBuilder::new(1);
   ///
-  /// args = args.add_num(100);
+  /// args.add_num(100);
   ///
   /// let mut my_args = args.finalize();
   ///
