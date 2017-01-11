@@ -11,7 +11,7 @@ use task::args::Args;
 use task::{TaskHandle, TaskControl};
 use queue::Node;
 use alloc::boxed::Box;
-use time;
+use tick;
 use sync::CriticalSection;
 use arch;
 
@@ -104,7 +104,7 @@ pub fn sleep(wchan: usize) {
 /// Put the current task to sleep with a timeout, waiting on a channel to be woken up.
 ///
 /// `sleep_for` takes a `usize` argument that acts as an identifier to wake up the task. It also
-/// takes a second `usize` argument for the maximum time it should sleep before waking.
+/// takes a second `usize` argument for the maximum ticks it should sleep before waking.
 ///
 /// # Examples
 ///
@@ -118,7 +118,7 @@ pub fn sleep_for(wchan: usize, delay: usize) {
   let _g = CriticalSection::begin();
   unsafe {
     if let Some(current) = CURRENT_TASK.as_mut() {
-      let ticks = time::get_tick();
+      let ticks = tick::get_tick();
       current.wchan = wchan;
       current.state = State::Blocked;
       current.delay = ticks + delay;
@@ -153,10 +153,10 @@ pub fn system_tick() {
   debug_assert!(arch::in_kernel_mode());
 
   let _g = CriticalSection::begin();
-  time::tick();
+  tick::tick();
 
   // wake up all tasks sleeping until the current tick
-  let ticks = time::get_tick();
+  let ticks = tick::get_tick();
   
   let to_wake = DELAY_QUEUE.remove(|task| task.delay <= ticks && task.wchan == FOREVER_CHAN);
   for mut task in to_wake.into_iter() {

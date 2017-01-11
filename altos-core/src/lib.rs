@@ -39,7 +39,7 @@ mod arch;
 #[path = "arch/test.rs"]
 mod arch;
 
-pub mod time;
+pub mod tick;
 pub mod syscall;
 mod task;
 mod sched;
