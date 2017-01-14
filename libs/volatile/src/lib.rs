@@ -53,7 +53,7 @@ impl<T: Copy> Volatile<T> {
   /// This is unsafe because the address could be potentially anywhere, and forcing a write to a
   /// memory address could cause undefined behavior if the wrong address is chosen.
   pub unsafe fn new(ptr: *const T) -> Self {
-    Volatile(RawVolatile::new(ptr))
+    Volatile(RawVolatile(ptr))
   }
 
   /// Returns the inner pointer.
@@ -93,10 +93,6 @@ impl<T: Copy> DerefMut for Volatile<T> {
 /*** Raw Volatile Implementation ***/
 
 impl<T: Copy> RawVolatile<T> {
-  fn new(ptr: *const T) -> Self {
-    RawVolatile(ptr)
-  }
-
   /// Stores a value into the address pointed at.
   pub unsafe fn store(&mut self, rhs: T) {
     volatile_store(self.0 as *mut T, rhs);
