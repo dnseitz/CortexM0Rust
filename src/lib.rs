@@ -225,7 +225,7 @@ fn arg_task(args: &mut Args) {
 }
 
 fn destroy_task(args: &mut Args) {
-  let handle = unsafe { args.pop_box::<TaskHandle>() };
+  let mut handle = unsafe { args.pop_box::<TaskHandle>() };
   let pb3 = gpio::Port::new(3, gpio::Group::B);
   loop {
     pb3.set();

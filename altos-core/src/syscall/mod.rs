@@ -57,6 +57,18 @@ pub fn new_task(code: fn(&mut Args), args: Args, stack_depth: usize, priority: P
   handle
 }
 
+pub fn exit() -> ! {
+  // UNSAFE: This can only be called from the currently running task, so we know we're the only one
+  // with a reference to the task. The destroy method is atomic so we don't have to worry about any
+  // threading issues
+  unsafe { 
+    debug_assert!(CURRENT_TASK.is_some());
+    CURRENT_TASK.as_mut().unwrap().destroy();
+  }
+  sched_yield();
+  panic!("syscall::exit - task returned from exit!");
+}
+
 /// Yield the current task to the scheduler so another task can run.
 ///
 /// # Examples

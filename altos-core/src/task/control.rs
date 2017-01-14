@@ -174,6 +174,13 @@ impl TaskControl {
     self.state = State::Ready;
   }
 
+  pub fn destroy(&mut self) {
+    // TODO: Check if task is INIT task? So at least we always have a safe task to run...
+    CriticalSection::begin();
+    self.destroy = true;
+    self.valid = INVALID_TASK;
+  }
+
   /// Checks if the stack has gone past its bounds, returns true if it has.
   ///
   /// Used to check if the stack has exceeded the memory allocated for it. If it has this means
@@ -236,7 +243,7 @@ impl TaskHandle {
   /// #   loop {}
   /// # }
   /// ```
-  pub fn destroy(&self) -> bool {
+  pub fn destroy(&mut self) -> bool {
     // FIXME: If the task has allocated any dynamic memory on it own, this will be leaked when the
     //  task is destroyed.
     //    A possible solution... allocate a heap space for each task. Pass a heap allocation
@@ -245,12 +252,10 @@ impl TaskHandle {
     //    wont have to worry about leaking memory. This means we would likely have to disallow core 
     //    library `Box` allocations within the task. Or... we just don't allow dynamic allocation 
     //    within tasks. - Daniel Seitz
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref_mut();
-      let critical_guard = CriticalSection::begin();
-      task.destroy = true;
-      task.valid = INVALID_TASK;
-      drop(critical_guard);
+      task.destroy();
       true
     }
     else {
@@ -285,6 +290,7 @@ impl TaskHandle {
   ///
   /// If the task has been destroyed then this method will return an `Err(())`.
   pub fn priority(&self) -> HandleResult<Priority> {
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref();
       Ok(task.priority)
@@ -321,6 +327,7 @@ impl TaskHandle {
   ///
   /// If the task has been destroyed then this method will return an `Err(())`.
   pub fn state(&self) -> HandleResult<State> {
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref();
       Ok(task.state)
@@ -358,6 +365,7 @@ impl TaskHandle {
   ///
   /// If the task has been destroyed then this method will return an `Err(())`.
   pub fn tid(&self) -> HandleResult<usize> {
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref();
       Ok(task.tid)
@@ -390,6 +398,7 @@ impl TaskHandle {
   ///
   /// If the task has been destroyed then this method will return an `Err(())`.
   pub fn name(&self) -> HandleResult<&'static str> {
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref();
       Ok(task.name)
@@ -424,6 +433,7 @@ impl TaskHandle {
   ///
   /// If the task has been destroyed then this method will return an `Err(())`.
   pub fn stack_size(&self) -> HandleResult<usize> {
+    let _g = CriticalSection::begin();
     if self.is_valid() {
       let task = self.task_ref();
       Ok(task.stack.depth())
@@ -443,7 +453,7 @@ impl TaskHandle {
     unsafe { &*self.0 }
   }
 
-  fn task_ref_mut(&self) -> &mut TaskControl {
+  fn task_ref_mut(&mut self) -> &mut TaskControl {
     unsafe { &mut *(self.0 as *mut TaskControl) }
   }
 }
