@@ -111,7 +111,7 @@ mod tests {
   fn check_stack_overflow_no_overflow() {
     let stack = Stack::new(1024);
     
-    assert!(!stack.check_overflow());
+    assert_not!(stack.check_overflow());
   }
 
   #[test]

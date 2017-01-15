@@ -18,6 +18,3 @@ volatile = { path = "../libs/volatile" }
 
 [target.thumbv6m-none-eabi.dependencies]
 cm0_atomic = { path = "libs/cm0_atomic" }
-
-#[dev-dependencies]
-#lazy_static = "0.1"
