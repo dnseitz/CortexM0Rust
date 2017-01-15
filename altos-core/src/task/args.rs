@@ -39,6 +39,7 @@ type RawPtr = usize;
 ///
 /// Use this to construct a new list of arguments to pass into a task. The arguments should be
 /// either a pointer to an object or a word length integer.
+#[derive(Debug)]
 pub struct ArgsBuilder {
   cap: usize,
   len: usize,
@@ -153,6 +154,7 @@ impl ArgsBuilder {
 /// order and type of arguments passed into it in order to correctly interpret them. Unfortunately
 /// we can not keep type safety across the task initialization barrier in order to keep tasks
 /// uniform.
+#[derive(Debug)]
 pub struct Args {
   args: Vec<RawPtr>,
 }

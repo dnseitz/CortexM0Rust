@@ -26,11 +26,19 @@ mod tid {
   }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Delay {
+  Timeout,
+  Sleep,
+  Overflowed,
+  Invalid,
+}
+
 /// Priorities that a task can have.
 ///
 /// Priorities declare which tasks should be run before others. A higher priority task will always
 /// be run before a lower priority task if it is ready to be run.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Priority {
   /// The highest priority.
   ///
@@ -74,7 +82,7 @@ impl Priority {
 ///
 /// States describe the current condition of a task. The scheduler uses this to determine which
 /// tasks are available to run.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum State {
   /// The task is in the process of being created, it has not been initialized yet and is not yet
   /// usable.
@@ -100,6 +108,7 @@ pub enum State {
 /// scope the memory associated with it is freed.
 #[repr(C)]
 #[doc(hidden)]
+#[derive(Debug)]
 pub struct TaskControl {
   stack: Stack, /*** stack MUST be the first field of the struct ***/
   args: Box<Args>,
@@ -108,8 +117,8 @@ pub struct TaskControl {
   valid: usize,
   pub wchan: usize,
   pub delay: usize,
+  pub delay_type: Delay,
   pub destroy: bool,
-  pub overflowed: bool,
   pub priority: Priority,
   pub state: State,
 }
@@ -137,35 +146,14 @@ impl TaskControl {
       valid: VALID_TASK + (tid & 0xFF),
       wchan: 0,
       delay: 0,
+      delay_type: Delay::Invalid,
       destroy: false,
-      overflowed: false,
       priority: priority,
       state: State::Embryo,
     };
     task.initialize(code);
     task
   }
-
-  /*
-  #[allow(dead_code)]
-  const fn uninitialized(name: &'static str) -> Self {
-    TaskControl {
-      stack: 0,
-      stack_base: 0,
-      stack_depth: 0,
-      args: None,
-      tid: !0,
-      name: name,
-      valid: INVALID_TASK,
-      wchan: 0,
-      delay: 0,
-      destroy: false, 
-      overflowed: false,
-      priority: Priority::Low,
-      state: State::Embryo,
-    }
-  }
-  */
 
   /// This initializes the task's stack. This method MUST only be called once, calling it more than
   /// once could at best waste some stack space and at worst corrupt an active stack.
@@ -176,7 +164,7 @@ impl TaskControl {
 
   pub fn destroy(&mut self) {
     // TODO: Check if task is INIT task? So at least we always have a safe task to run...
-    CriticalSection::begin();
+    let _g = CriticalSection::begin();
     self.destroy = true;
     self.valid = INVALID_TASK;
   }
@@ -191,6 +179,8 @@ impl TaskControl {
     //  this extra security?
     self.stack.check_overflow()
   }
+
+  pub fn tid(&self) -> usize { self.tid }
 }
 
 /// A `TaskHandle` references a `TaskControl` and provides access to some state about it.
@@ -202,7 +192,7 @@ impl TaskControl {
 /// This struct is thread safe, as all accesses to the internal `TaskControl` are checked for
 /// validity. If a task has been destroyed by one thread, then any other thread trying to access it
 /// will be returned an `Err`.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TaskHandle(*const TaskControl);
 
 unsafe impl Send for TaskHandle {}
@@ -443,10 +433,10 @@ impl TaskHandle {
     }
   }
 
-  fn is_valid(&self) -> bool {
+  pub fn is_valid(&self) -> bool {
     let (tid, valid) = unsafe { ((*self.0).tid, (*self.0).valid) };
     let tid_mask = tid & 0xFF;
-    valid + tid_mask == VALID_TASK + tid_mask 
+    valid == VALID_TASK + tid_mask
   }
 
   fn task_ref(&self) -> &TaskControl {
@@ -455,5 +445,137 @@ impl TaskHandle {
 
   fn task_ref_mut(&mut self) -> &mut TaskControl {
     unsafe { &mut *(self.0 as *mut TaskControl) }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+  use test;
+  
+  fn get_task() -> TaskControl {
+    // NOTE: We can't return the TaskControl and the TaskHandle as a tuple here because the
+    // TaskControl object get's moved on return so we would end up with a dangling pointer in our
+    // TaskHandle
+    test::create_test_task(512, Priority::Normal, "task test")
+  }
+
+  fn get_invalid_task() -> TaskControl {
+    let mut task = test::create_test_task(512, Priority::Normal, "invalid test");
+    task.valid = INVALID_TASK;
+    task
+  }
+
+  #[test]
+  fn task_handle_valid() {
+    let mut task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.is_valid());
+    task.valid = INVALID_TASK;
+    assert!(!handle.is_valid());
+  }
+
+  #[test]
+  fn task_handle_destroy() {
+    let task = get_task();
+    let mut handle = TaskHandle::new(&task);
+
+    assert!(handle.is_valid());
+    assert!(handle.destroy());
+
+    assert!(task.destroy);
+    assert!(!handle.is_valid());
+  }
+
+  #[test]
+  fn invalid_task_handle_destroy() {
+    let task = get_invalid_task();
+    let mut handle = TaskHandle::new(&task);
+
+    assert!(!handle.is_valid());
+    assert!(!handle.destroy());
+    assert!(!handle.is_valid());
+  }
+
+  #[test]
+  fn task_handle_stack_size() {
+    let task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert_eq!(handle.stack_size(), Ok(512));
+  }
+
+  #[test]
+  fn invalid_task_handle_stack_size() {
+    let task = get_invalid_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.stack_size().is_err());
+  }
+
+  #[test]
+  fn task_handle_priority() {
+    let task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert_eq!(handle.priority(), Ok(Priority::Normal));
+  }
+
+  #[test]
+  fn invalid_task_handle_priority() {
+    let task = get_invalid_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.priority().is_err());
+  }
+
+  #[test]
+  fn task_handle_state() {
+    let task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert_eq!(handle.state(), Ok(State::Ready));
+  }
+
+  #[test]
+  fn invalid_task_handle_state() {
+    let task = get_invalid_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.state().is_err());
+  }
+
+  #[test]
+  fn task_handle_name() {
+    let task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert_eq!(handle.name(), Ok("task test"));
+  }
+
+  #[test]
+  fn invalid_task_handle_name() {
+    let task = get_invalid_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.name().is_err());
+  }
+
+  #[test]
+  fn task_handle_tid() {
+    let task = get_task();
+    let handle = TaskHandle::new(&task);
+
+    assert_eq!(handle.tid(), Ok(task.tid));
+
+  }
+
+  #[test]
+  fn invalid_task_handle_tid() {
+    let task = get_invalid_task();
+    let handle = TaskHandle::new(&task);
+
+    assert!(handle.tid().is_err());
   }
 }

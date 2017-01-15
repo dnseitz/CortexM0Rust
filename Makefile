@@ -77,5 +77,8 @@ gdb-ocd: debug
 test:
 	@$(cargo) test $(test_args)
 
+test_verbose:
+	@$(cargo) test $(test_args) -- --nocapture
+
 size: debug
 
