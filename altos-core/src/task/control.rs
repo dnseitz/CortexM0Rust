@@ -433,6 +433,23 @@ impl TaskHandle {
     }
   }
 
+  /// Check if the task pointed to by this handle is valid
+  /// 
+  /// # Examples
+  /// 
+  /// ```rust,no_run
+  /// use altos_core::syscall::new_task;
+  /// 
+  /// let handle = new_task(test_task, Args::empty(), 512, Priority::Normal, "new_task_name");
+  /// 
+  /// if handle.is_valid() {
+  ///   // The task is still valid
+  /// }
+  /// else {
+  ///   // The task has been destroyed
+  /// }
+  /// 
+  /// ```
   pub fn is_valid(&self) -> bool {
     let (tid, valid) = unsafe { ((*self.0).tid, (*self.0).valid) };
     let tid_mask = tid & 0xFF;
@@ -449,7 +466,7 @@ impl TaskHandle {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
   use super::*;
   use test;
   

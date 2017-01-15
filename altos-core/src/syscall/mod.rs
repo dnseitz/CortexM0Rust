@@ -249,12 +249,6 @@ mod tests {
   use task::args::Args;
   use sched::start_scheduler;
 
-  fn create_two_tasks() -> (TaskHandle, TaskHandle) {
-    let handle_1 = test::create_and_schedule_test_task(512, Priority::Normal, "test task 1");
-    let handle_2 = test::create_and_schedule_test_task(512, Priority::Normal, "test task 2");
-    (handle_1, handle_2)
-  }
-
   #[test]
   fn test_new_task() {
     let _g = test::set_up();
@@ -273,7 +267,7 @@ mod tests {
     // on the platform implementation... but at least we can make sure it's working properly for
     // the test suite
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
 
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -287,7 +281,7 @@ mod tests {
   #[test]
   fn test_sleep() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -311,7 +305,7 @@ mod tests {
   #[test]
   fn test_wake() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -343,7 +337,7 @@ mod tests {
   #[test]
   fn test_system_tick() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -359,7 +353,7 @@ mod tests {
   #[test]
   fn test_sleep_for_forever() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -399,7 +393,7 @@ mod tests {
   #[test]
   fn test_sleep_for_timeout() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -439,7 +433,7 @@ mod tests {
   #[test]
   fn test_sleep_for_early_wake() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
@@ -467,7 +461,7 @@ mod tests {
   #[test]
   fn test_sleep_for_no_timeout_forever() {
     let _g = test::set_up();
-    let (handle_1, handle_2) = create_two_tasks();
+    let (handle_1, handle_2) = test::create_two_tasks();
     
     start_scheduler();
     assert!(test::current_task().is_some());
